@@ -21,6 +21,10 @@ export function normalizeUser(raw: User): User {
     status: raw.status ?? "active",
     statusChangedAt: raw.statusChangedAt ?? null,
     isStaff: raw.isStaff ?? false,
+    subscriptionTier: raw.subscriptionTier ?? "free",
+    subscriptionPlan: raw.subscriptionPlan ?? null,
+    subscriptionStartedAt: raw.subscriptionStartedAt ?? null,
+    subscriptionExpiresAt: raw.subscriptionExpiresAt ?? null,
   };
 }
 

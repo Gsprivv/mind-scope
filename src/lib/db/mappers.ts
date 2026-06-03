@@ -1,5 +1,13 @@
 import type { RiskLevel } from "../risk";
-import type { AccountStatus, CheckIn, JournalEntry, QuestionAnswer, User } from "../../types";
+import type {
+  AccountStatus,
+  CheckIn,
+  JournalEntry,
+  QuestionAnswer,
+  SubscriptionPlan,
+  SubscriptionTier,
+  User,
+} from "../../types";
 
 export interface ProfileRow {
   id: string;
@@ -13,6 +21,10 @@ export interface ProfileRow {
   status_changed_at: string | null;
   created_at: string;
   is_staff: boolean;
+  subscription_tier?: SubscriptionTier;
+  subscription_plan?: SubscriptionPlan | null;
+  subscription_started_at?: string | null;
+  subscription_expires_at?: string | null;
 }
 
 export interface CheckInRow {
@@ -48,6 +60,10 @@ export function profileToUser(row: ProfileRow): User {
     statusChangedAt: row.status_changed_at,
     createdAt: row.created_at,
     isStaff: row.is_staff ?? false,
+    subscriptionTier: row.subscription_tier ?? "free",
+    subscriptionPlan: row.subscription_plan ?? null,
+    subscriptionStartedAt: row.subscription_started_at ?? null,
+    subscriptionExpiresAt: row.subscription_expires_at ?? null,
     password: "",
     passwordHash: "",
   };

@@ -1,6 +1,9 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { PremiumGate } from "../components/PremiumGate";
+import { BmiImprovementPlanPanel } from "../components/premium/ImprovementPlans";
 import { useAuth } from "../context/AuthContext";
+import { useSubscription } from "../hooks/useSubscription";
 import {
   calculateBmi,
   getWeightGuidance,
@@ -10,13 +13,15 @@ import {
   type WeightGoal,
 } from "../lib/bmi";
 import { getBmiProfile, saveBmiProfile } from "../lib/bmiStorage";
+import { buildBmiImprovementPlan } from "../lib/improvementPlans";
 import { getDietitianSignpost } from "../lib/dietitianSignpost";
 import { btnPrimaryClass, btnSecondaryClass, cardClass, inputClass } from "../lib/ui";
 
-type Step = "calc" | "goal" | "guidance";
+type Step = "calc" | "goal" | "guidance" | "premium_prompt";
 
 export function BmiHealth() {
   const { user } = useAuth();
+  const { isPremium } = useSubscription();
   const saved = getBmiProfile();
 
   const [heightCm, setHeightCm] = useState(
@@ -32,10 +37,10 @@ export function BmiHealth() {
 
   const dietitian = useMemo(
     () =>
-      user
+      user && isPremium
         ? getDietitianSignpost(user.postcode, user.city)
         : null,
-    [user]
+    [user, isPremium]
   );
 
   const range = useMemo(() => {
@@ -44,9 +49,14 @@ export function BmiHealth() {
   }, [heightCm]);
 
   const guidance = useMemo(() => {
-    if (!result || goalChoice === null) return null;
+    if (!result || goalChoice === null || !isPremium) return null;
     return getWeightGuidance(result.category, goalChoice);
-  }, [result, goalChoice]);
+  }, [result, goalChoice, isPremium]);
+
+  const bmiPlan = useMemo(() => {
+    if (!result || goalChoice === null || !isPremium) return null;
+    return buildBmiImprovementPlan(result.category, goalChoice);
+  }, [result, goalChoice, isPremium]);
 
   const handleCalculate = (e: FormEvent) => {
     e.preventDefault();
@@ -75,7 +85,11 @@ export function BmiHealth() {
 
   const startGuidance = (goal: WeightGoal) => {
     setGoalChoice(goal);
-    setStep("guidance");
+    if (isPremium) {
+      setStep("guidance");
+    } else {
+      setStep("premium_prompt");
+    }
   };
 
   const reset = () => {
@@ -93,8 +107,8 @@ export function BmiHealth() {
         BMI &amp; nutrition
       </h1>
       <p className="mt-2 text-sage-600 dark:text-slate-400">
-        Check your BMI, get general food and exercise ideas, and find how to
-        contact a registered dietitian near{" "}
+        Check your BMI for free. Premium unlocks personalised food &amp; exercise
+        tips, 7-day plans, and dietitian signposting near{" "}
         <strong>{user.city || "you"}</strong>.
       </p>
 
@@ -185,6 +199,11 @@ export function BmiHealth() {
             <p className="font-medium text-sage-900 dark:text-slate-100">
               {result.goalQuestion}
             </p>
+            {!isPremium && (
+              <p className="mt-2 text-xs text-teal-800 dark:text-teal-300">
+                Nutrition tips, exercise guides, and 7-day plans are Premium features.
+              </p>
+            )}
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
@@ -197,13 +216,18 @@ export function BmiHealth() {
                 }
                 className={btnPrimaryClass}
               >
-                Yes, show me tips
+                {isPremium ? "Yes, show me tips" : "Unlock tips (Premium)"}
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  setGoalChoice("maintain");
-                  setStep("guidance");
+                  if (isPremium) {
+                    setGoalChoice("maintain");
+                    setStep("guidance");
+                  } else {
+                    setGoalChoice("maintain");
+                    setStep("premium_prompt");
+                  }
                 }}
                 className={btnSecondaryClass}
               >
@@ -237,7 +261,19 @@ export function BmiHealth() {
         </div>
       )}
 
-      {step === "guidance" && result && guidance && (
+      {step === "premium_prompt" && result && !isPremium && (
+        <div className="mt-8 space-y-4">
+          <PremiumGate
+            title="Unlock BMI tips & 7-day plans"
+            description="Premium includes personalised food and exercise guides, weekly wellness reports, and a 7-day BMI improvement plan."
+          />
+          <button type="button" onClick={reset} className={btnSecondaryClass}>
+            Back to calculator
+          </button>
+        </div>
+      )}
+
+      {step === "guidance" && result && guidance && isPremium && (
         <div className="mt-8 space-y-6">
           <div className={`p-6 ${cardClass}`}>
             <h2 className="font-display text-xl font-semibold text-sage-900 dark:text-slate-100">
@@ -296,6 +332,10 @@ export function BmiHealth() {
             </section>
           </div>
 
+          {bmiPlan && (
+            <BmiImprovementPlanPanel reason={bmiPlan.reason} days={bmiPlan.days} />
+          )}
+
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={reset} className={btnSecondaryClass}>
               Recalculate BMI
@@ -307,7 +347,7 @@ export function BmiHealth() {
         </div>
       )}
 
-      {dietitian && (
+      {dietitian && isPremium && (
         <section className={`mt-10 p-6 ${cardClass}`}>
           <h2 className="font-display text-lg font-semibold text-sage-900 dark:text-slate-100">
             Dietitian near you
@@ -348,6 +388,12 @@ export function BmiHealth() {
             weight too fast&quot; or &quot;help me lose weight&quot;.
           </p>
         </section>
+      )}
+
+      {!isPremium && result && step === "goal" && (
+        <div className="mt-6">
+          <PremiumGate compact title="Dietitian signposting is Premium" />
+        </div>
       )}
     </div>
   );

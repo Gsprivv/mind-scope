@@ -7,6 +7,7 @@ import {
 } from "../data/questions";
 import { WELLNESS_TEST_COMPLETE, WELLNESS_TEST_LABEL } from "../constants/brand";
 import { useAuth } from "../context/AuthContext";
+import { useSubscription } from "../hooks/useSubscription";
 import { useUserCheckIns } from "../hooks/useUserCheckIns";
 import {
   assessCrisisFromCheckIn,
@@ -34,6 +35,7 @@ export function CheckIn() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const { checkIns, reload } = useUserCheckIns(user?.id);
+  const { isPremium } = useSubscription();
 
   if (!user) return null;
 
@@ -129,14 +131,19 @@ export function CheckIn() {
 
         <div className="mt-10 rounded-2xl border border-sage-200 bg-white p-6 text-left shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <h2 className="font-display text-lg font-semibold text-sage-900 dark:text-slate-100">
-            View your insights?
+            {isPremium ? "View your insights?" : "Want deeper insights?"}
           </h2>
           <p className="mt-2 text-sm text-sage-600 dark:text-slate-400">
-            See patterns, your mood timeline story, coping profile, and charts.
+            {isPremium
+              ? "See patterns, your mood timeline story, coping profile, and charts."
+              : "Premium unlocks charts, weekly reports, advice, and 7-day improvement plans from £2.99/month."}
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
-            <Link to="/history" className={`flex-1 text-center ${btnPrimaryClass}`}>
-              Yes, view insights
+            <Link
+              to={isPremium ? "/history" : "/premium"}
+              className={`flex-1 text-center ${btnPrimaryClass}`}
+            >
+              {isPremium ? "Yes, view insights" : "Upgrade to Premium"}
             </Link>
             <Link to="/dashboard" className={`flex-1 text-center ${btnSecondaryClass}`}>
               Dashboard

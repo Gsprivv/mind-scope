@@ -5,22 +5,28 @@ import {
   WELLNESS_TEST_ACTION,
   wellnessTestCountLabel,
 } from "../constants/brand";
+import { PremiumGate } from "../components/PremiumGate";
+import { WeeklyReportCard } from "../components/premium/PremiumReports";
 import { useAuth } from "../context/AuthContext";
+import { useSubscription } from "../hooks/useSubscription";
 import { useUserCheckIns } from "../hooks/useUserCheckIns";
 import { buildWellnessInsights, computeStreak } from "../lib/analytics";
 import { formatDateUK } from "../lib/formatDate";
+import { buildWeeklyReport } from "../lib/premiumReports";
 import { getRiskInfo } from "../lib/risk";
 import { getDisplayName } from "../lib/users";
 import { btnPrimaryClass, btnSecondaryClass, cardClass } from "../lib/ui";
 
 export function Dashboard() {
   const { user } = useAuth();
+  const { isPremium } = useSubscription();
   const { checkIns, loading } = useUserCheckIns(user?.id);
   if (!user) return null;
   const latest = checkIns[0];
   const latestRisk = latest ? getRiskInfo(latest.score) : null;
   const streak = computeStreak(checkIns);
-  const insights = buildWellnessInsights(checkIns, user);
+  const insights = isPremium ? buildWellnessInsights(checkIns, user) : null;
+  const weeklyReport = isPremium ? buildWeeklyReport(checkIns) : null;
 
   return (
     <div>
@@ -49,7 +55,7 @@ export function Dashboard() {
               {WELLNESS_TEST_ACTION}
             </Link>
             <Link to="/history" className={btnSecondaryClass}>
-              Insights &amp; charts
+              {isPremium ? "Insights & charts" : "History (Premium)"}
             </Link>
             <Link to="/journal" className={btnSecondaryClass}>
               Journal
@@ -57,10 +63,15 @@ export function Dashboard() {
             <Link to="/bmi" className={btnSecondaryClass}>
               BMI &amp; nutrition
             </Link>
-          <Link to="/account" className={btnSecondaryClass}>
-            Account
-          </Link>
-        </div>
+            <Link to="/account" className={btnSecondaryClass}>
+              Account
+            </Link>
+            {!isPremium && (
+              <Link to="/premium" className={btnSecondaryClass}>
+                Upgrade
+              </Link>
+            )}
+          </div>
         </div>
         <div className="hidden overflow-hidden rounded-2xl lg:block">
           <img
@@ -71,7 +82,11 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        className={`mt-8 grid gap-4 ${
+          isPremium ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-2 lg:grid-cols-3"
+        }`}
+      >
         <div className={cardClass + " p-5"}>
           <p className="text-sm font-medium text-sage-500 dark:text-slate-400">Latest score</p>
           <p className="mt-1 font-display text-4xl font-semibold text-sage-800 dark:text-slate-100">
@@ -84,23 +99,25 @@ export function Dashboard() {
             {latestRisk ? latestRisk.label : "—"}
           </p>
         </div>
-        <div className={cardClass + " p-5"}>
-          <p className="text-sm font-medium text-sage-500 dark:text-slate-400">
-            {STREAK_LABEL}
-          </p>
-          <p className="mt-1 flex items-center gap-2 font-display text-4xl font-semibold text-teal-700 dark:text-teal-400">
-            {streak.current > 0 && (
-              <span className="text-3xl leading-none" aria-hidden>
-                🔥
-              </span>
-            )}
-            <span>{streak.current}</span>
-          </p>
-          <p className="text-xs text-sage-500 dark:text-slate-400">
-            {streak.longest > 0 && <span aria-hidden>🔥 </span>}
-            Best: {streak.longest} day{streak.longest === 1 ? "" : "s"}
-          </p>
-        </div>
+        {isPremium && (
+          <div className={cardClass + " p-5"}>
+            <p className="text-sm font-medium text-sage-500 dark:text-slate-400">
+              {STREAK_LABEL}
+            </p>
+            <p className="mt-1 flex items-center gap-2 font-display text-4xl font-semibold text-teal-700 dark:text-teal-400">
+              {streak.current > 0 && (
+                <span className="text-3xl leading-none" aria-hidden>
+                  🔥
+                </span>
+              )}
+              <span>{streak.current}</span>
+            </p>
+            <p className="text-xs text-sage-500 dark:text-slate-400">
+              {streak.longest > 0 && <span aria-hidden>🔥 </span>}
+              Best: {streak.longest} day{streak.longest === 1 ? "" : "s"}
+            </p>
+          </div>
+        )}
         <div className={cardClass + " p-5"}>
           <p className="text-sm font-medium text-sage-500 dark:text-slate-400">
             Last wellness test
@@ -117,7 +134,23 @@ export function Dashboard() {
         </p>
       )}
 
-      {insights && insights.patterns[0] && (
+      {!isPremium && checkIns.length > 0 && (
+        <div className="mt-6">
+          <PremiumGate
+            compact
+            title="Unlock streaks, charts & advice"
+            description="Premium gives you full history, weekly reports, insights, and 7-day improvement plans from £2.99/month."
+          />
+        </div>
+      )}
+
+      {isPremium && weeklyReport && (
+        <div className="mt-6">
+          <WeeklyReportCard report={weeklyReport} />
+        </div>
+      )}
+
+      {isPremium && insights && insights.patterns[0] && (
         <div className={`mt-6 p-5 ${cardClass}`}>
           <p className="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-400">
             Mind Scope insight

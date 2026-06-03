@@ -12,6 +12,7 @@ import { BmiHealth } from "./pages/BmiHealth";
 import { Home } from "./pages/Home";
 import { Login } from "./pages/Login";
 import { Contact } from "./pages/Contact";
+import { Premium } from "./pages/Premium";
 import { Signup } from "./pages/Signup";
 import { StaffAllHistory } from "./pages/staff/StaffAllHistory";
 import { StaffLayout } from "./pages/staff/StaffLayout";
@@ -85,6 +86,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <BmiHealth />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="premium"
+          element={
+            <ProtectedRoute>
+              <Premium />
             </ProtectedRoute>
           }
         />

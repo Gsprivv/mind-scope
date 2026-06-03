@@ -1,6 +1,8 @@
-import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useState, type FormEvent } from "react";
+import { PremiumBadge } from "../components/PremiumGate";
 import { useAuth } from "../context/AuthContext";
+import { useSubscription } from "../hooks/useSubscription";
 import { formatDateUK } from "../lib/formatDate";
 import { getDisplayName, getUserAge } from "../lib/users";
 import { btnPrimaryClass, btnSecondaryClass, cardClass, inputClass } from "../lib/ui";
@@ -9,6 +11,7 @@ import { StaffBadge } from "../components/StaffBadge";
 export function Account() {
   const { user, deactivateMyAccount, deleteMyAccount, updateMyContact, refreshUser } =
     useAuth();
+  const { isPremium, planLabel, expiresLabel } = useSubscription();
   const navigate = useNavigate();
   const [confirmDelete, setConfirmDelete] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -203,6 +206,28 @@ export function Account() {
           </p>
         )}
       </div>
+
+      {!user.isStaff && (
+        <div className={`mt-6 p-6 ${cardClass}`}>
+          <h2 className="font-medium text-sage-900 dark:text-slate-100">
+            Subscription
+          </h2>
+          {isPremium ? (
+            <p className="mt-2 text-sm text-sage-700 dark:text-slate-300">
+              You have <PremiumBadge /> {planLabel && `(${planLabel})`}
+              {expiresLabel && <> · active until {expiresLabel}</>}.
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-sage-600 dark:text-slate-400">
+              Basic plan — wellness test and latest score only. Upgrade for charts,
+              insights, weekly reports, and BMI coaching.
+            </p>
+          )}
+          <Link to="/premium" className={`mt-4 inline-block ${btnPrimaryClass}`}>
+            {isPremium ? "Manage Premium" : "Upgrade to Premium"}
+          </Link>
+        </div>
+      )}
 
       {!user.isStaff && (
         <div className={`mt-6 space-y-6 p-6 ${cardClass}`}>

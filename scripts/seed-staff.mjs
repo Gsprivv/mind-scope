@@ -18,37 +18,43 @@ function loadEnvLocal() {
 loadEnvLocal();
 
 const url = process.env.VITE_SUPABASE_URL;
-/** Admin key for creating users — NOT the anon/publishable key. */
 const serviceKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.VITE_SUPABASE_SERVICE_ROLE_KEY ||
   process.env.VITE_SUPABASE_SECRET_KEY;
+
+const STAFF_LOCATION = { city: "Hayes", postcode: "UB3 3BB" };
 
 const STAFF = [
   {
     fullName: "Glen Ahorble",
     email: "glen.ahorble@mindscope.staff.uk",
     password: "GlenMS#2026A",
+    dateOfBirth: "2007-01-15",
   },
   {
     fullName: "Omar Al Sayeed",
     email: "omar.alsayeed@mindscope.staff.uk",
     password: "OmarMS#2026B",
+    dateOfBirth: "2006-01-15",
   },
   {
     fullName: "Hussein Omer",
     email: "hussein.omer@mindscope.staff.uk",
     password: "HusseinMS#2026C",
+    dateOfBirth: "2007-01-15",
   },
   {
     fullName: "Laila Deeb",
     email: "laila.deeb@mindscope.staff.uk",
     password: "LailaMS#2026D",
+    dateOfBirth: "2005-01-15",
   },
   {
     fullName: "Abu Jawad",
     email: "abu.jawad@mindscope.staff.uk",
     password: "AbuMS#2026E",
+    dateOfBirth: "2007-01-15",
   },
 ];
 
@@ -74,14 +80,25 @@ for (const staff of STAFF) {
     .eq("email", staff.email)
     .maybeSingle();
 
+  const profilePatch = {
+    is_staff: true,
+    full_name: staff.fullName,
+    date_of_birth: staff.dateOfBirth,
+    city: STAFF_LOCATION.city,
+    postcode: STAFF_LOCATION.postcode,
+  };
+
   if (existing?.id) {
-    await admin
-      .from("profiles")
-      .update({ is_staff: true, full_name: staff.fullName })
-      .eq("id", existing.id);
+    await admin.from("profiles").update(profilePatch).eq("id", existing.id);
     await admin.auth.admin.updateUserById(existing.id, {
       password: staff.password,
-      user_metadata: { full_name: staff.fullName, is_staff: true },
+      user_metadata: {
+        full_name: staff.fullName,
+        is_staff: true,
+        date_of_birth: staff.dateOfBirth,
+        city: STAFF_LOCATION.city,
+        postcode: STAFF_LOCATION.postcode,
+      },
     });
     console.log(`Updated staff: ${staff.fullName}`);
     continue;
@@ -93,10 +110,10 @@ for (const staff of STAFF) {
     email_confirm: true,
     user_metadata: {
       full_name: staff.fullName,
-      date_of_birth: "1990-01-01",
+      date_of_birth: staff.dateOfBirth,
       telephone: "07000000000",
-      city: "London",
-      postcode: "SW1A 1AA",
+      city: STAFF_LOCATION.city,
+      postcode: STAFF_LOCATION.postcode,
       is_staff: true,
     },
   });
@@ -106,10 +123,7 @@ for (const staff of STAFF) {
     continue;
   }
 
-  await admin
-    .from("profiles")
-    .update({ is_staff: true, full_name: staff.fullName })
-    .eq("id", data.user.id);
+  await admin.from("profiles").update(profilePatch).eq("id", data.user.id);
 
   console.log(`Created staff: ${staff.fullName} (${staff.email})`);
 }

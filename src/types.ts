@@ -2,6 +2,9 @@ import type { RiskLevel } from "./lib/risk";
 
 export type AccountStatus = "active" | "deactivated";
 
+export type SubscriptionTier = "free" | "premium";
+export type SubscriptionPlan = "monthly" | "yearly";
+
 export interface User {
   id: string;
   fullName: string;
@@ -16,6 +19,10 @@ export interface User {
   statusChangedAt: string | null;
   createdAt: string;
   isStaff: boolean;
+  subscriptionTier: SubscriptionTier;
+  subscriptionPlan: SubscriptionPlan | null;
+  subscriptionStartedAt: string | null;
+  subscriptionExpiresAt: string | null;
   /** @deprecated legacy field */
   name?: string;
 }

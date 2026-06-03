@@ -13,7 +13,14 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'deactivated')),
   status_changed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  is_staff BOOLEAN NOT NULL DEFAULT false
+  is_staff BOOLEAN NOT NULL DEFAULT false,
+  subscription_tier TEXT NOT NULL DEFAULT 'free'
+    CHECK (subscription_tier IN ('free', 'premium')),
+  subscription_plan TEXT
+    CHECK (subscription_plan IS NULL OR subscription_plan IN ('monthly', 'yearly')),
+  subscription_started_at TIMESTAMPTZ,
+  subscription_expires_at TIMESTAMPTZ,
+  stripe_customer_id TEXT
 );
 
 CREATE TABLE IF NOT EXISTS public.check_ins (
