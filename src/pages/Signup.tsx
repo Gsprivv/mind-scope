@@ -41,7 +41,7 @@ export function Signup() {
       setError(err);
       return;
     }
-    navigate("/check-in", { replace: true });
+    navigate("/dashboard", { replace: true });
   };
 
   return (

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { APP_NAME, APP_TAGLINE, IMAGES } from "../constants/brand";
+import { APP_NAME, APP_TAGLINE, IMAGES, WELLNESS_TEST_LABEL } from "../constants/brand";
 import { CHECK_IN_QUESTION_COUNT } from "../data/questions";
 import { ChatOpenButton } from "../components/ChatWidget";
 import { btnPrimaryClass, btnSecondaryClass, cardClass } from "../lib/ui";
@@ -36,7 +36,7 @@ export function Home() {
           </h1>
           <p className="mt-5 text-lg leading-relaxed text-sage-600 dark:text-slate-400">
             {APP_NAME} helps you understand your wellbeing through structured
-            check-ins across {CHECK_IN_QUESTION_COUNT} key areas — from sleep
+            wellness tests across {CHECK_IN_QUESTION_COUNT} key areas — from sleep
             quality to resilience — with clear scores and personal history.
           </p>
 
@@ -50,7 +50,7 @@ export function Home() {
           </div>
 
           <p className="mt-4 text-sm text-sage-500 dark:text-slate-500">
-            Sign in required for wellness check-ins · UK crisis resources in footer
+            Sign in required for the {WELLNESS_TEST_LABEL.toLowerCase()} · UK crisis resources in footer
           </p>
           <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-sage-600 dark:text-slate-400">
             <ChatOpenButton variant="inline" />

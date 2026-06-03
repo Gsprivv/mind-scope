@@ -5,6 +5,7 @@ import {
   CHECK_IN_QUESTION_COUNT,
   computeWellnessScore,
 } from "../data/questions";
+import { WELLNESS_TEST_COMPLETE, WELLNESS_TEST_LABEL } from "../constants/brand";
 import { useAuth } from "../context/AuthContext";
 import { useUserCheckIns } from "../hooks/useUserCheckIns";
 import {
@@ -103,7 +104,7 @@ export function CheckIn() {
     return (
       <div className="mx-auto max-w-lg text-center">
         <p className="text-sm font-medium uppercase tracking-wide text-sage-500 dark:text-slate-400">
-          Check-in complete
+          {WELLNESS_TEST_COMPLETE}
         </p>
         <p className="mt-2 font-display text-5xl font-semibold text-sage-800 dark:text-slate-100">
           {submitted.score}%
@@ -151,7 +152,13 @@ export function CheckIn() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <p className="mb-4 text-sm text-sage-500 dark:text-slate-400">
+      <h1 className="font-display text-2xl font-semibold text-sage-900 dark:text-slate-100">
+        {WELLNESS_TEST_LABEL}
+      </h1>
+      <p className="mt-1 text-sm text-sage-600 dark:text-slate-400">
+        Answer each question honestly — there are no right or wrong answers.
+      </p>
+      <p className="mb-4 mt-3 text-sm text-sage-500 dark:text-slate-400">
         Signed in as {getDisplayName(user)}
       </p>
 
@@ -261,7 +268,7 @@ export function CheckIn() {
               disabled={!allAnswered || saving}
               className={`flex-1 ${btnPrimaryClass} disabled:opacity-50`}
             >
-              {saving ? "Saving…" : "Finish & get my score"}
+              {saving ? "Saving…" : "Finish test & get my score"}
             </button>
           )}
         </div>

@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { APP_NAME } from "../constants/brand";
+import { APP_NAME, WELLNESS_TEST_LABEL } from "../constants/brand";
 import { InstallAppBanner } from "./InstallAppBanner";
 import { SupabaseSetupBanner } from "./SupabaseSetupBanner";
 import { ChatWidget } from "./ChatWidget";
@@ -76,7 +76,7 @@ export function Layout() {
                     }`
                   }
                 >
-                  Check-in
+                  {WELLNESS_TEST_LABEL}
                 </NavLink>
                 <span className="hidden text-sm text-sage-500 lg:inline dark:text-slate-400">
                   {getDisplayName(user).split(" ")[0]}

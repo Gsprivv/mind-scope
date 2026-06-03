@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { WELLNESS_TEST_ACTION } from "../constants/brand";
 import { RiskPieChart } from "../components/charts/RiskPieChart";
 import { ScoreLineChart } from "../components/charts/ScoreLineChart";
 import { WellnessInsightsPanel } from "../components/insights/WellnessInsightsPanel";
@@ -32,14 +33,14 @@ export function History() {
             Journal
           </Link>
           <Link to="/check-in" className={btnPrimaryClass}>
-            New check-in
+            {WELLNESS_TEST_ACTION}
           </Link>
         </div>
       </div>
 
       {checkIns.length === 0 ? (
         <p className="mt-10 rounded-2xl border border-dashed border-sage-300 bg-sage-50/50 px-5 py-12 text-center text-sage-600 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-400">
-          No check-ins yet.{" "}
+          No wellness tests yet.{" "}
           <Link to="/check-in" className="font-medium text-teal-700 underline dark:text-teal-400">
             Take your first assessment
           </Link>

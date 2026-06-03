@@ -6,6 +6,17 @@ export const CHATBOT_NAME = "Mind Scope";
 export const APP_TAGLINE =
   "Professional mental wellness tracking for the UK";
 
+/** Plain-language labels for the wellness questionnaire (route stays /check-in). */
+export const WELLNESS_TEST_LABEL = "Wellness test";
+export const WELLNESS_TEST_ACTION = "Take wellness test";
+export const WELLNESS_TEST_COMPLETE = "Wellness test complete";
+export const STREAK_LABEL = "Day streak";
+
+export function wellnessTestCountLabel(count: number): string {
+  if (count === 0) return "No tests completed yet";
+  return `${count} test${count === 1 ? "" : "s"} completed`;
+}
+
 export const APP_DESCRIPTION =
   `${APP_NAME} — UK mental wellness check-ins, ${CHATBOT_NAME} assistant, and crisis resources.`;
 

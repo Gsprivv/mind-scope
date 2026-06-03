@@ -1,5 +1,10 @@
 import { Link } from "react-router-dom";
-import { IMAGES } from "../constants/brand";
+import {
+  IMAGES,
+  STREAK_LABEL,
+  WELLNESS_TEST_ACTION,
+  wellnessTestCountLabel,
+} from "../constants/brand";
 import { useAuth } from "../context/AuthContext";
 import { useUserCheckIns } from "../hooks/useUserCheckIns";
 import { buildWellnessInsights, computeStreak } from "../lib/analytics";
@@ -25,17 +30,23 @@ export function Dashboard() {
             Hello, {getDisplayName(user).split(" ")[0]}
           </h1>
           <p className="mt-1 text-sage-600 dark:text-slate-400">
-            {user.city}, {user.postcode} ·{" "}
-            {loading
-              ? "Loading check-ins…"
-              : checkIns.length === 0
-                ? "Start your first check-in"
-                : `${checkIns.length} check-in${checkIns.length === 1 ? "" : "s"}`}
+            {user.city}, {user.postcode}
+            {!loading && (
+              <> · {wellnessTestCountLabel(checkIns.length)}</>
+            )}
+            {loading && <> · Loading…</>}
           </p>
+
+          {checkIns.length === 0 && !loading && (
+            <p className="mt-4 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-900 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-100">
+              Welcome! When you are ready, tap <strong>{WELLNESS_TEST_ACTION}</strong>{" "}
+              to complete your wellbeing questionnaire and get your score.
+            </p>
+          )}
 
           <div className="mt-6 flex flex-wrap gap-2">
             <Link to="/check-in" className={btnPrimaryClass}>
-              Take check-in
+              {WELLNESS_TEST_ACTION}
             </Link>
             <Link to="/history" className={btnSecondaryClass}>
               Insights &amp; charts
@@ -71,14 +82,26 @@ export function Dashboard() {
           </p>
         </div>
         <div className={cardClass + " p-5"}>
-          <p className="text-sm font-medium text-sage-500 dark:text-slate-400">Check-in streak</p>
-          <p className="mt-1 font-display text-4xl font-semibold text-teal-700 dark:text-teal-400">
-            {streak.current}
+          <p className="text-sm font-medium text-sage-500 dark:text-slate-400">
+            {STREAK_LABEL}
           </p>
-          <p className="text-xs text-sage-500">Best: {streak.longest} days</p>
+          <p className="mt-1 flex items-center gap-2 font-display text-4xl font-semibold text-teal-700 dark:text-teal-400">
+            {streak.current > 0 && (
+              <span className="text-3xl leading-none" aria-hidden>
+                🔥
+              </span>
+            )}
+            <span>{streak.current}</span>
+          </p>
+          <p className="text-xs text-sage-500 dark:text-slate-400">
+            {streak.longest > 0 && <span aria-hidden>🔥 </span>}
+            Best: {streak.longest} day{streak.longest === 1 ? "" : "s"}
+          </p>
         </div>
         <div className={cardClass + " p-5"}>
-          <p className="text-sm font-medium text-sage-500 dark:text-slate-400">Last check-in</p>
+          <p className="text-sm font-medium text-sage-500 dark:text-slate-400">
+            Last wellness test
+          </p>
           <p className="mt-2 text-lg font-medium text-sage-800 dark:text-slate-100">
             {latest ? formatDateUK(latest.completedAt) : "None"}
           </p>
