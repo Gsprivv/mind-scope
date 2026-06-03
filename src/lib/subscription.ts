@@ -4,7 +4,7 @@ export function isPremiumUser(user: User | null | undefined): boolean {
   if (!user) return false;
   if (user.isStaff) return true;
   if (user.subscriptionTier !== "premium") return false;
-  if (!user.subscriptionExpiresAt) return true;
+  if (!user.subscriptionExpiresAt) return false;
   return new Date(user.subscriptionExpiresAt).getTime() > Date.now();
 }
 

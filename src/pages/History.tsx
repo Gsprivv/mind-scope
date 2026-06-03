@@ -183,14 +183,7 @@ export function History() {
               </section>
 
               <div className="mt-8">
-                <PremiumGate title="Unlock charts & insights">
-                  <section className={`p-6 ${cardClass}`}>
-                    <RiskPieChart data={riskData} />
-                    <div className="mt-6">
-                      <ScoreLineChart checkIns={checkIns} />
-                    </div>
-                  </section>
-                </PremiumGate>
+                <PremiumGate title="Unlock charts & insights" />
               </div>
             </>
           )}

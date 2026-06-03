@@ -19,7 +19,8 @@ LANGUAGE sql
 IMMUTABLE
 AS $$
   SELECT p_tier = 'premium'
-    AND (p_expires_at IS NULL OR p_expires_at > NOW());
+    AND p_expires_at IS NOT NULL
+    AND p_expires_at > NOW();
 $$;
 
 -- Used by Stripe webhook (service role) to activate or extend premium

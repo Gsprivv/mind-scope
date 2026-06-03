@@ -51,6 +51,49 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.check_ins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.journal_entries ENABLE ROW LEVEL SECURITY;
 
+CREATE OR REPLACE FUNCTION public.is_premium_active(
+  p_tier TEXT,
+  p_expires_at TIMESTAMPTZ
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT p_tier = 'premium'
+    AND p_expires_at IS NOT NULL
+    AND p_expires_at > NOW();
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_profile_premium(p_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.profiles p
+    WHERE p.id = p_user_id
+      AND (
+        p.is_staff = true
+        OR public.is_premium_active(p.subscription_tier, p.subscription_expires_at)
+      )
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_my_premium_status()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.is_profile_premium(auth.uid());
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_my_premium_status() TO authenticated;
+
 -- Users read/update their own profile
 DROP POLICY IF EXISTS "profiles_select_own" ON public.profiles;
 CREATE POLICY "profiles_select_own"
@@ -68,11 +111,23 @@ CREATE POLICY "profiles_insert_own"
   ON public.profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
 
--- Check-ins: own data only (staff uses RPC below)
+-- Check-ins: own data only; free users see latest only (see premium-enforcement.sql)
 DROP POLICY IF EXISTS "check_ins_select_own" ON public.check_ins;
 CREATE POLICY "check_ins_select_own"
   ON public.check_ins FOR SELECT
-  USING (auth.uid() = user_id);
+  USING (
+    auth.uid() = user_id
+    AND (
+      public.is_profile_premium(auth.uid())
+      OR id = (
+        SELECT c.id
+        FROM public.check_ins c
+        WHERE c.user_id = auth.uid()
+        ORDER BY c.completed_at DESC
+        LIMIT 1
+      )
+    )
+  );
 
 DROP POLICY IF EXISTS "check_ins_insert_own" ON public.check_ins;
 CREATE POLICY "check_ins_insert_own"
@@ -111,7 +166,8 @@ BEGIN
     telephone,
     city,
     postcode,
-    is_staff
+    is_staff,
+    subscription_tier
   )
   VALUES (
     NEW.id,
@@ -121,7 +177,8 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data->>'telephone', ''),
     COALESCE(NEW.raw_user_meta_data->>'city', ''),
     COALESCE(NEW.raw_user_meta_data->>'postcode', ''),
-    COALESCE((NEW.raw_user_meta_data->>'is_staff')::boolean, false)
+    COALESCE((NEW.raw_user_meta_data->>'is_staff')::boolean, false),
+    'free'
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
