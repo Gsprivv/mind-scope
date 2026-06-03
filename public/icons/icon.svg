@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d9488"/>
+      <stop offset="100%" style="stop-color:#115e59"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="220" r="72" fill="none" stroke="#f8faf9" stroke-width="20" opacity="0.35"/>
+  <path d="M256 168c-40 0-72 28-72 62 0 34 72 118 72 118s72-84 72-118c0-34-32-62-72-62z" fill="#f8faf9"/>
+  <circle cx="256" cy="230" r="28" fill="#115e59"/>
+  <text x="256" y="400" text-anchor="middle" font-family="system-ui,sans-serif" font-size="88" font-weight="700" fill="#f8faf9">MS</text>
+</svg>

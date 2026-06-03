@@ -1,0 +1,8 @@
+node_modules
+dist
+.DS_Store
+*.local
+
+# Capacitor (optional — remove these lines if you commit native projects)
+# ios
+# android

@@ -1,0 +1,16 @@
+export const QUESTION_LABELS: Record<string, string> = {
+  sleep: "Sleep quality",
+  energy: "Energy",
+  engagement: "Engagement",
+  stress: "Stress",
+  focus: "Focus",
+  social: "Social connection",
+  purpose: "Sense of purpose",
+  confidence: "Confidence",
+  satisfaction: "Life satisfaction",
+  control: "Feeling of control",
+  optimism: "Optimism",
+  balance: "Work/school balance",
+  hobbies: "Time on hobbies",
+  resilience: "Recovery from setbacks",
+};

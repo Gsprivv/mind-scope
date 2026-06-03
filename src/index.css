@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+  --color-sage-50: #f4f7f4;
+  --color-sage-100: #e4ebe4;
+  --color-sage-200: #c9d6c9;
+  --color-sage-300: #a3b8a3;
+  --color-sage-400: #7a947a;
+  --color-sage-500: #5a755a;
+  --color-sage-600: #465c46;
+  --color-sage-700: #394a39;
+  --color-sage-800: #2f3d2f;
+  --color-sage-900: #283328;
+  --color-teal-500: #0d9488;
+  --color-teal-600: #0f766e;
+  --color-teal-700: #115e59;
+  --color-lavender-100: #ede8f4;
+  --color-lavender-200: #ddd3ec;
+  --color-cream: #f8faf9;
+  --color-warm: #f0ebe3;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply min-h-screen bg-cream font-sans text-sage-900 antialiased transition-colors duration-200;
+}
+
+.dark body {
+  @apply bg-slate-950 text-slate-100;
+}
