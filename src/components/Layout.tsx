@@ -63,6 +63,9 @@ export function Layout() {
                 <NavLink to="/journal" className={navLinkClass}>
                   <span className="hidden lg:inline">Journal</span>
                 </NavLink>
+                <NavLink to="/bmi" className={navLinkClass}>
+                  <span className="hidden lg:inline">BMI</span>
+                </NavLink>
                 <NavLink to="/account" className={navLinkClass}>
                   <span className="hidden xl:inline">Account</span>
                 </NavLink>

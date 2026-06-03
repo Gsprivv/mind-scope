@@ -8,6 +8,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { History } from "./pages/History";
 import { Account } from "./pages/Account";
 import { Journal } from "./pages/Journal";
+import { BmiHealth } from "./pages/BmiHealth";
 import { Home } from "./pages/Home";
 import { Login } from "./pages/Login";
 import { Contact } from "./pages/Contact";
@@ -76,6 +77,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Journal />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="bmi"
+          element={
+            <ProtectedRoute>
+              <BmiHealth />
             </ProtectedRoute>
           }
         />

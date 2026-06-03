@@ -51,9 +51,12 @@ export function Dashboard() {
             <Link to="/history" className={btnSecondaryClass}>
               Insights &amp; charts
             </Link>
-          <Link to="/journal" className={btnSecondaryClass}>
-            Journal
-          </Link>
+            <Link to="/journal" className={btnSecondaryClass}>
+              Journal
+            </Link>
+            <Link to="/bmi" className={btnSecondaryClass}>
+              BMI &amp; nutrition
+            </Link>
           <Link to="/account" className={btnSecondaryClass}>
             Account
           </Link>

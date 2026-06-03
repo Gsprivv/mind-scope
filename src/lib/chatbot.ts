@@ -1,6 +1,37 @@
 import { CHATBOT_NAME } from "../constants/brand";
 import { CHECK_IN_QUESTION_COUNT } from "../data/questions";
 import { UK_EMERGENCY } from "../constants/company";
+import { getWeightGuidance, type WeightGoal } from "./bmi";
+import { getDietitianSignpost } from "./dietitianSignpost";
+
+export interface ChatUserContext {
+  city?: string;
+  postcode?: string;
+}
+
+function dietitianChatBlock(ctx: ChatUserContext | null | undefined): string {
+  if (!ctx?.postcode?.trim()) {
+    return `• **GP** — ask for NHS dietitian referral\n• **BDA Find a dietitian** — https://www.bda.uk.com/food-health/find-a-freelance-dietitian.html\n• **NHS find services** — https://www.nhs.uk/nhs-services/find-services/`;
+  }
+  const signpost = getDietitianSignpost(ctx.postcode, ctx.city ?? "");
+  return signpost.services
+    .slice(0, 4)
+    .map((s) => {
+      const link = s.href ? ` (${s.href})` : "";
+      return `• **${s.name}** — ${s.contact}${link}`;
+    })
+    .join("\n");
+}
+
+function weightTipsBlock(goal: WeightGoal): string {
+  const g = getWeightGuidance(
+    goal === "gain" ? "underweight" : goal === "lose" ? "obese" : "healthy",
+    goal
+  );
+  const foods = g.foods.slice(0, 4).map((f) => `• ${f}`).join("\n");
+  const exercise = g.exercises.slice(0, 3).map((e) => `• ${e}`).join("\n");
+  return `${g.summary}\n\n**Foods:**\n${foods}\n\n**Exercise:**\n${exercise}\n\n**How often:** ${g.frequency.replace(/\*\*/g, "")}`;
+}
 
 export interface ChatMessage {
   id: string;
@@ -44,9 +75,18 @@ function ukServicesReply(): string {
   return `Here are trusted UK support services:\n\n${lines.join("\n")}\n\nIf you are in immediate danger, call **999**.`;
 }
 
-export function getBotReply(userText: string): string {
+export function getBotReply(
+  userText: string,
+  ctx?: ChatUserContext | null
+): string {
   const text = userText.trim().toLowerCase();
   const raw = userText.trim();
+  const area =
+    ctx?.city && ctx?.postcode
+      ? `**${ctx.city} (${ctx.postcode})**`
+      : ctx?.postcode
+        ? `**${ctx.postcode}**`
+        : "your area";
 
   if (!text) {
     return `I'm **${CHATBOT_NAME}**. Type a message whenever you're ready — I'm here to listen and help.`;
@@ -58,7 +98,7 @@ export function getBotReply(userText: string): string {
     const hour = new Date().getHours();
     const timeGreet =
       hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-    return `${timeGreet}! I'm **${CHATBOT_NAME}**, your wellbeing assistant on this platform.\n\nI can chat about stress, sleep, focus, check-ins, or signpost UK support. What's on your mind today?`;
+    return `${timeGreet}! I'm **${CHATBOT_NAME}**, your wellbeing assistant on this platform.\n\nI can chat about stress, sleep, weight & nutrition, wellness tests, or UK support. What's on your mind today?`;
   }
 
   if (HOW_ARE_YOU.test(text)) {
@@ -86,7 +126,51 @@ export function getBotReply(userText: string): string {
   }
 
   if (/help|support|assist|what can you do/.test(text)) {
-    return `I'm **${CHATBOT_NAME}**. I can:\n• Chat about stress, sleep, mood, and daily balance\n• Explain our **${CHECK_IN_QUESTION_COUNT}-question** wellness check-in\n• Point you to **UK crisis services**\n• Guide you to sign up or contact the team\n\nWhat would help most right now?`;
+    return `I'm **${CHATBOT_NAME}**. I can:\n• Chat about stress, sleep, mood, and daily balance\n• **Weight & BMI** — tips to lose or gain weight safely\n• **Dietitian signposting** near ${area}\n• Explain our **${CHECK_IN_QUESTION_COUNT}-question** wellness test\n• Point you to **UK crisis services**\n\nOpen **BMI & nutrition** in the menu for your calculator. What would help most right now?`;
+  }
+
+  if (
+    /dietitian|dietician|nutritionist|see a diet|find a diet|food specialist|nearest diet/.test(
+      text
+    )
+  ) {
+    return `Here is how to find a **registered dietitian** near ${area}:\n\n${dietitianChatBlock(ctx)}\n\nFor a full list on the app, open **BMI & nutrition** in the menu. NHS dietitians usually need a **GP referral** first.`;
+  }
+
+  if (
+    /gaining weight too fast|gain weight too fast|putting on weight too fast|weight going up too fast|getting heavier too fast/.test(
+      text
+    )
+  ) {
+    return `Gaining weight quickly can have many causes — stress, medications, thyroid issues, or changes in eating and activity. It's worth speaking to your **GP** if this is new or worrying.\n\n**While you arrange support:**\n• Keep a simple food diary for a week\n• Notice liquid calories (alcohol, sugary drinks)\n• Aim for regular walks — 20–30 minutes daily\n• Prioritise sleep — poor sleep can affect appetite hormones\n\n${weightTipsBlock("lose")}\n\n**Dietitian near ${area}:**\n${dietitianChatBlock(ctx)}\n\nUse **BMI & nutrition** in the menu to calculate your BMI.`;
+  }
+
+  if (
+    /lose weight|losing weight|want to lose|need to lose|slim down|go on a diet|dieting|overweight|obese|too fat|belly fat/.test(
+      text
+    )
+  ) {
+    return `Wanting to lose weight is common — the safest approach is **steady change**, not crash diets.\n\n${weightTipsBlock("lose")}\n\n**Professional support near ${area}:**\n${dietitianChatBlock(ctx)}\n\nOpen **BMI & nutrition** to check your BMI and get a personalised plan. If you have diabetes, are pregnant, or take regular medication, check with your GP first.`;
+  }
+
+  if (
+    /gain weight|gaining weight|underweight|too thin|too skinny|put on weight|bulk up|eat more/.test(
+      text
+    )
+  ) {
+    return `Healthy weight gain is usually **slow and steady** with nutrient-dense meals, not just sugary snacks.\n\n${weightTipsBlock("gain")}\n\n**Dietitian near ${area}:**\n${dietitianChatBlock(ctx)}\n\nUse **BMI & nutrition** in the menu for your BMI result and full guidance. If you are losing weight without trying, see your GP.`;
+  }
+
+  if (/bmi|body mass index|calculate my weight|am i overweight/.test(text)) {
+    return `You can check your BMI on the **BMI & nutrition** page (in the menu when signed in).\n\nEnter height (cm) and weight (kg) — we'll show your category and, if you want, food and exercise tips for losing, gaining, or maintaining weight.\n\nFor a dietitian near ${area}:\n${dietitianChatBlock(ctx)}`;
+  }
+
+  if (
+    /eat(ing)? too much|overeating|binge|can't stop eating|cravings|junk food|snack too much/.test(
+      text
+    )
+  ) {
+    return `Eating more than you intend can link to stress, boredom, tiredness, or strict dieting earlier in the day.\n\n**Ideas that help many people:**\n• Regular meals — don't skip lunch then overeat at night\n• Protein at each meal (eggs, fish, beans, yoghurt)\n• Keep fruit and nuts visible; move treats out of sight\n• Walk 10 minutes after meals if you can\n• Track stress in your **wellness test** — it often links to eating\n\n${weightTipsBlock("lose")}\n\n**Support near ${area}:**\n${dietitianChatBlock(ctx)}`;
   }
 
   if (/stress|stressed|overwhelm|pressure|burnout/.test(text)) {
@@ -181,7 +265,7 @@ export function getBotReply(userText: string): string {
     return `**${CHATBOT_NAME}** is this platform's wellbeing assistant — here for supportive chat, check-in guidance, and UK resource signposting. How can I support you right now?`;
   }
 
-  return `I'm **${CHATBOT_NAME}** — I may not have caught that fully. You could ask about stress, sleep, check-ins, signing in, or UK crisis support. Or simply say **hi** and we can chat from there. If you're in distress, please call **116 123** (Samaritans).`;
+  return `I'm **${CHATBOT_NAME}** — I may not have caught that fully. Try asking about **weight**, **diet tips**, **finding a dietitian**, stress, sleep, or your wellness test. Open **BMI & nutrition** in the menu for your calculator. If you're in distress, please call **116 123** (Samaritans).`;
 }
 
 export function createMessage(role: "user" | "bot", text: string): ChatMessage {
@@ -195,5 +279,5 @@ export function createMessage(role: "user" | "bot", text: string): ChatMessage {
 
 export const WELCOME_MESSAGE = createMessage(
   "bot",
-  `Hello — I'm **Mind Scope**, your wellbeing assistant. I'm here for a friendly chat, practical tips, and help using this platform. I'm not a therapist or emergency service. How are you today?`
+  `Hello — I'm **Mind Scope**, your wellbeing assistant. I can help with stress, sleep, **weight & nutrition**, and finding UK support including dietitians near you. I'm not a therapist or emergency service. How are you today?`
 );

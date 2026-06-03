@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { useChatWidget } from "../context/ChatWidgetContext";
 import { CHATBOT_NAME } from "../constants/brand";
 import {
@@ -34,13 +35,17 @@ function renderBotText(text: string) {
 
 const QUICK_REPLIES = [
   "Hi",
-  "How are you?",
-  "I'm feeling stressed",
-  "UK crisis support",
+  "Help me lose weight",
+  "Gaining weight too fast",
+  "Find a dietitian near me",
 ];
 
 export function ChatWidget() {
+  const { user } = useAuth();
   const { isOpen, openChat, closeChat } = useChatWidget();
+  const chatContext = user
+    ? { city: user.city, postcode: user.postcode }
+    : null;
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
@@ -73,7 +78,7 @@ export function ChatWidget() {
     window.setTimeout(() => {
       setMessages((prev) => [
         ...prev,
-        createMessage("bot", getBotReply(trimmed)),
+        createMessage("bot", getBotReply(trimmed, chatContext)),
       ]);
       setTyping(false);
     }, 600);
