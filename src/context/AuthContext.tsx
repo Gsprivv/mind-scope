@@ -25,6 +25,8 @@ import {
   MAX_LOGIN_ATTEMPTS,
 } from "../lib/loginAttempts";
 import { isAccountActive, normalizeUser } from "../lib/users";
+import { clearLastActiveAt, isSessionExpired, readLastActiveAt, writeLastActiveAt } from "../lib/sessionTimeout";
+import { useSessionTimeout } from "../hooks/useSessionTimeout";
 import { isSupabaseConfigured, requireSupabase } from "../lib/supabase";
 import type { Session } from "@supabase/supabase-js";
 import type { AuthChangeEvent } from "@supabase/supabase-js";
@@ -57,6 +59,17 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function SessionTimeoutGuard({
+  isSignedIn,
+  logout,
+}: {
+  isSignedIn: boolean;
+  logout: () => Promise<void>;
+}) {
+  useSessionTimeout(isSignedIn, logout);
+  return null;
+}
+
 async function loadUserFromSession(): Promise<User | null> {
   const client = requireSupabase();
   const {
@@ -64,11 +77,18 @@ async function loadUserFromSession(): Promise<User | null> {
   } = await client.auth.getSession();
   if (!session?.user) return null;
 
+  if (isSessionExpired(readLastActiveAt())) {
+    clearLastActiveAt();
+    await client.auth.signOut();
+    return null;
+  }
+
   const profile = await fetchProfileById(session.user.id);
   if (!profile || !isAccountActive(profile)) {
     await client.auth.signOut();
     return null;
   }
+  writeLastActiveAt();
   return profile;
 }
 
@@ -114,6 +134,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         return;
       }
+      if (isSessionExpired(readLastActiveAt())) {
+        clearLastActiveAt();
+        await client.auth.signOut();
+        setUser(null);
+        return;
+      }
       try {
         const profile = await fetchProfileById(session.user.id);
         if (!profile || !isAccountActive(profile)) {
@@ -122,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         setUser(profile);
+        writeLastActiveAt();
       } catch {
         setUser(null);
       }
@@ -264,6 +291,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: "Could not load your profile." };
       }
       setUser(normalizeUser(profile));
+      writeLastActiveAt();
       return { success: true };
     },
     []
@@ -304,6 +332,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    clearLastActiveAt();
     if (isSupabaseConfigured()) {
       await requireSupabase().auth.signOut();
     }
@@ -380,7 +409,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      <SessionTimeoutGuard isSignedIn={!!user} logout={logout} />
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth(): AuthContextValue {
