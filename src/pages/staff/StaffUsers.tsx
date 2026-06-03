@@ -4,7 +4,7 @@ import {
   staffFetchAllProfiles,
   staffSetProfileStatus,
 } from "../../lib/db/profiles";
-import { useStaff } from "../../context/StaffContext";
+import { StaffBadge } from "../../components/StaffBadge";
 import {
   getDisplayName,
   getUserAge,
@@ -14,18 +14,16 @@ import {
 import type { User } from "../../types";
 
 export function StaffUsers() {
-  const { staffCode } = useStaff();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!staffCode) return;
     setLoading(true);
     setError(null);
     try {
-      const rows = await staffFetchAllProfiles(staffCode);
+      const rows = await staffFetchAllProfiles();
       setUsers(
         rows.sort(
           (a, b) =>
@@ -39,7 +37,7 @@ export function StaffUsers() {
     } finally {
       setLoading(false);
     }
-  }, [staffCode]);
+  }, []);
 
   useEffect(() => {
     void refresh();
@@ -57,6 +55,10 @@ export function StaffUsers() {
   };
 
   const handleDeactivate = (u: User) => {
+    if (u.isStaff) {
+      setError("Staff accounts cannot be deactivated here.");
+      return;
+    }
     if (
       !window.confirm(
         `Deactivate ${getDisplayName(u)}? They will not be able to sign in.`
@@ -65,27 +67,29 @@ export function StaffUsers() {
       return;
     }
     void runAction("Account deactivated.", () =>
-      staffSetProfileStatus(staffCode!, u.id, "deactivated")
+      staffSetProfileStatus(u.id, "deactivated")
     );
   };
 
   const handleActivate = (u: User) => {
     void runAction("Account reactivated.", () =>
-      staffSetProfileStatus(staffCode!, u.id, "active")
+      staffSetProfileStatus(u.id, "active")
     );
   };
 
   const handleDelete = (u: User) => {
+    if (u.isStaff) {
+      setError("Staff accounts cannot be deleted from the admin panel.");
+      return;
+    }
     if (
       !window.confirm(
-        `Permanently delete ${getDisplayName(u)} and all their check-ins and journal data? This cannot be undone.`
+        `Permanently delete ${getDisplayName(u)} and all their tests and journal data? This cannot be undone.`
       )
     ) {
       return;
     }
-    void runAction("Account deleted.", () =>
-      staffDeleteUser(staffCode!, u.id)
-    );
+    void runAction("Account deleted.", () => staffDeleteUser(u.id));
   };
 
   return (
@@ -96,7 +100,7 @@ export function StaffUsers() {
       <p className="mt-1 text-sm text-sage-600">
         {loading
           ? "Loading from cloud…"
-          : `${users.length} account${users.length === 1 ? "" : "s"} · ${users.filter(isAccountActive).length} active`}
+          : `${users.length} account${users.length === 1 ? "" : "s"} · ${users.filter(isAccountActive).length} active · ${users.filter((u) => u.isStaff).length} staff`}
       </p>
       {message && (
         <p className="mt-2 rounded-lg bg-teal-50 px-3 py-2 text-sm text-teal-800">
@@ -108,11 +112,6 @@ export function StaffUsers() {
           {error}
         </p>
       )}
-      <p className="mt-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs text-teal-900">
-        All sign-ups from any phone or computer appear here — stored securely in
-        the cloud database. Passwords are managed by Supabase Auth and are not
-        shown to staff.
-      </p>
 
       <div className="mt-6 overflow-x-auto rounded-xl border border-sage-200 bg-white shadow-sm">
         <table className="w-full min-w-[960px] text-left text-sm">
@@ -164,6 +163,7 @@ export function StaffUsers() {
                     </td>
                     <td className="px-4 py-3 font-medium text-sage-900">
                       {getDisplayName(u)}
+                      {u.isStaff && <StaffBadge />}
                     </td>
                     <td className="px-4 py-3 text-sage-700">{u.email}</td>
                     <td className="px-4 py-3 text-sage-700">{u.city || "—"}</td>
@@ -177,32 +177,36 @@ export function StaffUsers() {
                       {getUserAge(u) ?? "—"}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {active ? (
+                      {u.isStaff ? (
+                        <span className="text-xs text-sage-500">Staff account</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {active ? (
+                            <button
+                              type="button"
+                              onClick={() => handleDeactivate(u)}
+                              className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                            >
+                              Deactivate
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleActivate(u)}
+                              className="rounded border border-teal-300 bg-teal-50 px-2 py-1 text-xs font-medium text-teal-900 hover:bg-teal-100"
+                            >
+                              Reactivate
+                            </button>
+                          )}
                           <button
                             type="button"
-                            onClick={() => handleDeactivate(u)}
-                            className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                            onClick={() => handleDelete(u)}
+                            className="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-800 hover:bg-red-100"
                           >
-                            Deactivate
+                            Delete
                           </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleActivate(u)}
-                            className="rounded border border-teal-300 bg-teal-50 px-2 py-1 text-xs font-medium text-teal-900 hover:bg-teal-100"
-                          >
-                            Reactivate
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(u)}
-                          className="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-800 hover:bg-red-100"
-                        >
-                          Delete
-                        </button>
-                      </div>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );

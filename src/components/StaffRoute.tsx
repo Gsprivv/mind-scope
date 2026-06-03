@@ -1,10 +1,12 @@
 import { Navigate } from "react-router-dom";
-import { useStaff } from "../context/StaffContext";
+import { useAuth } from "../context/AuthContext";
 
 export function StaffRoute({ children }: { children: React.ReactNode }) {
-  const { isStaff } = useStaff();
+  const { user, loading } = useAuth();
 
-  if (!isStaff) {
+  if (loading) return null;
+
+  if (!user?.isStaff) {
     return <Navigate to="/staff" replace />;
   }
 

@@ -63,12 +63,8 @@ export async function fetchProfileByEmail(
   return data ? normalizeUser(profileToUser(data as ProfileRow)) : null;
 }
 
-export async function staffFetchAllProfiles(
-  staffCode: string
-): Promise<User[]> {
-  const { data, error } = await requireSupabase().rpc("staff_list_profiles", {
-    p_staff_code: staffCode,
-  });
+export async function staffFetchAllProfiles(): Promise<User[]> {
+  const { data, error } = await requireSupabase().rpc("staff_list_profiles");
 
   if (error) throw error;
   return ((data as ProfileRow[]) ?? []).map((row) =>
@@ -77,27 +73,44 @@ export async function staffFetchAllProfiles(
 }
 
 export async function staffSetProfileStatus(
-  staffCode: string,
   userId: string,
   status: "active" | "deactivated"
 ): Promise<void> {
   const { error } = await requireSupabase().rpc("staff_set_profile_status", {
-    p_staff_code: staffCode,
     p_user_id: userId,
     p_status: status,
   });
   if (error) throw error;
 }
 
-export async function staffDeleteUser(
-  staffCode: string,
-  userId: string
-): Promise<void> {
+export async function staffDeleteUser(userId: string): Promise<void> {
   const { error } = await requireSupabase().rpc("staff_delete_user", {
-    p_staff_code: staffCode,
     p_user_id: userId,
   });
   if (error) throw error;
+}
+
+export async function updateOwnContact(
+  email: string,
+  telephone: string
+): Promise<User> {
+  const client = requireSupabase();
+  const trimmedEmail = email.trim().toLowerCase();
+  const trimmedPhone = telephone.trim();
+
+  const { error: authError } = await client.auth.updateUser({
+    email: trimmedEmail,
+  });
+  if (authError && !authError.message.includes("confirmation")) {
+    throw authError;
+  }
+
+  const { data, error } = await client.rpc("update_own_contact", {
+    p_email: trimmedEmail,
+    p_telephone: trimmedPhone,
+  });
+  if (error) throw error;
+  return normalizeUser(profileToUser(data as ProfileRow));
 }
 
 export async function deactivateOwnAccount(): Promise<void> {

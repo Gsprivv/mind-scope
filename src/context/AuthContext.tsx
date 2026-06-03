@@ -14,7 +14,9 @@ import {
   fetchProfileById,
   getAccountStatus,
   resetPasswordWithPhone,
+  updateOwnContact,
 } from "../lib/db/profiles";
+import { isStaffEmail } from "../constants/staffAccounts";
 import { calculateAge } from "../lib/age";
 import {
   clearAttempts,
@@ -50,6 +52,7 @@ interface AuthContextValue {
   deleteMyAccount: () => Promise<string | null>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateMyContact: (email: string, telephone: string) => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -141,6 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!fullName) return "Please enter your full name.";
     if (!trimmedEmail.includes("@")) return "Please enter a valid email.";
+    if (isStaffEmail(trimmedEmail)) {
+      return "Staff accounts are created by your administrator. Use Sign in instead.";
+    }
     if (input.password.length < 6) {
       return "Password must be at least 6 characters.";
     }
@@ -327,6 +333,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
+  const updateMyContact = useCallback(
+    async (email: string, telephone: string) => {
+      if (!user) return "Not signed in.";
+      const trimmedEmail = email.trim().toLowerCase();
+      if (!trimmedEmail.includes("@")) return "Please enter a valid email.";
+      if (!telephone.trim()) return "Please enter your telephone number.";
+      if (isStaffEmail(trimmedEmail) && trimmedEmail !== user.email) {
+        return "Staff emails cannot be changed to a different staff address here.";
+      }
+      try {
+        const updated = await updateOwnContact(trimmedEmail, telephone.trim());
+        setUser(updated);
+        return null;
+      } catch (err) {
+        return err instanceof Error ? err.message : "Could not update contact details.";
+      }
+    },
+    [user]
+  );
+
   const value = useMemo(
     () => ({
       user,
@@ -338,6 +364,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deleteMyAccount,
       logout,
       refreshUser,
+      updateMyContact,
     }),
     [
       user,
@@ -349,6 +376,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deleteMyAccount,
       logout,
       refreshUser,
+      updateMyContact,
     ]
   );
 

@@ -69,6 +69,11 @@ export function Layout() {
                 <NavLink to="/account" className={navLinkClass}>
                   <span className="hidden xl:inline">Account</span>
                 </NavLink>
+                {user.isStaff && (
+                  <NavLink to="/staff/users" className={navLinkClass}>
+                    <span className="hidden md:inline">Staff admin</span>
+                  </NavLink>
+                )}
                 <NavLink
                   to="/check-in"
                   className={({ isActive }) =>

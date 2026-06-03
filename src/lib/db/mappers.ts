@@ -12,6 +12,7 @@ export interface ProfileRow {
   status: AccountStatus;
   status_changed_at: string | null;
   created_at: string;
+  is_staff: boolean;
 }
 
 export interface CheckInRow {
@@ -46,6 +47,7 @@ export function profileToUser(row: ProfileRow): User {
     status: row.status,
     statusChangedAt: row.status_changed_at,
     createdAt: row.created_at,
+    isStaff: row.is_staff ?? false,
     password: "",
     passwordHash: "",
   };

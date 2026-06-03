@@ -37,12 +37,8 @@ export async function createCheckIn(
   return checkInFromRow(data as CheckInRow);
 }
 
-export async function staffFetchAllCheckIns(
-  staffCode: string
-): Promise<CheckIn[]> {
-  const { data, error } = await requireSupabase().rpc("staff_list_check_ins", {
-    p_staff_code: staffCode,
-  });
+export async function staffFetchAllCheckIns(): Promise<CheckIn[]> {
+  const { data, error } = await requireSupabase().rpc("staff_list_check_ins");
 
   if (error) throw error;
   return ((data as CheckInRow[]) ?? []).map(checkInFromRow);

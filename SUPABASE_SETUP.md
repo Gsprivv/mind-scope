@@ -96,15 +96,19 @@ The function uses your project’s service role key automatically when deployed.
 
 1. Run `npm run build` and deploy to Netlify (or use `npm run dev` locally).
 2. On **phone A**: sign up a new account.
-3. On **laptop**: open staff (footer dot) → code **101278** → **All users**.
+3. On **laptop**: staff signs in → **Staff admin** → **All users**.
 4. You should see the account from phone A.
 
 ---
 
-## Staff access
+## Staff accounts (5 named logins)
 
-- Staff code is still **101278** (change it in `supabase/schema.sql` in all `staff_code_valid` / staff functions, and in `src/constants/staff.ts`).
-- Staff sees all users and all check-ins from the **cloud**, not from each device’s browser storage.
+1. Run `supabase/staff-migration.sql` in the SQL Editor.
+2. Add `SUPABASE_SERVICE_ROLE_KEY` to `.env.local` (see `STAFF_ACCOUNTS.md`).
+3. Run `npm run seed:staff`
+4. Staff sign in at `/login` — same login for the app and **Staff admin**.
+
+See **`STAFF_ACCOUNTS.md`** for names, emails, and passwords.
 
 ---
 
@@ -124,7 +128,7 @@ The function uses your project’s service role key automatically when deployed.
 |---------|-----|
 | Yellow banner “Cloud database not connected” | Add `.env.local` keys or Netlify env vars and redeploy |
 | Sign up works but login fails | Disable email confirmation in Supabase Auth |
-| Staff shows “Invalid staff code” | Code must be **101278** unless you changed the SQL |
+| Staff shows “Staff access required” | Run `staff-migration.sql` and sign in with a staff account |
 | Password reset fails | Deploy the `password-reset` edge function |
 | Old accounts missing | Old localStorage accounts do not migrate automatically — users sign up again |
 

@@ -1,23 +1,26 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { APP_NAME } from "../../constants/brand";
-import { useStaff } from "../../context/StaffContext";
+import { useAuth } from "../../context/AuthContext";
+import { btnPrimaryClass, cardClass } from "../../lib/ui";
 
 export function StaffPortal() {
-  const { unlock } = useStaff();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (unlock(code)) {
-      setError(null);
+  useEffect(() => {
+    if (!loading && user?.isStaff) {
       navigate("/staff/users", { replace: true });
-      return;
     }
-    setError("Invalid code.");
-  };
+  }, [user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <p className="py-16 text-center text-sage-600">Checking access…</p>
+    );
+  }
+
+  if (user?.isStaff) return null;
 
   return (
     <div className="mx-auto max-w-md py-8 sm:py-12">
@@ -33,39 +36,39 @@ export function StaffPortal() {
         Staff portal
       </h1>
       <p className="mt-2 text-sage-600">
-        Enter the staff access code to view all registered users and patient
-        check-in history.
+        Staff must sign in with their Mind Scope staff account to view all
+        users and wellness test history.
       </p>
-      <form
-        onSubmit={handleSubmit}
-        className="mt-8 space-y-4 rounded-2xl border border-sage-200 bg-white p-6 shadow-sm"
-      >
-        {error && (
-          <p className="text-sm text-red-700" role="alert">
-            {error}
+
+      {user && !user.isStaff ? (
+        <div className={`mt-8 p-6 ${cardClass}`}>
+          <p className="text-sm text-red-800" role="alert">
+            You are signed in as a regular user ({user.email}). Staff access
+            requires a staff account.
           </p>
-        )}
-        <label className="block">
-          <span className="text-sm font-medium text-sage-700">Staff code</span>
-          <input
-            type="password"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-sage-200 px-3 py-2.5 outline-none focus:border-sage-400 focus:ring-2 focus:ring-sage-200"
-            autoFocus
-          />
-        </label>
-        <button
-          type="submit"
-          className="w-full rounded-xl bg-sage-700 py-3 font-semibold text-cream hover:bg-sage-800"
-        >
-          Unlock staff area
-        </button>
-      </form>
-      <p className="mt-4 text-center text-xs text-sage-500">
-        Tip: use the small dot in the site footer on any page to open staff
-        access quickly.
-      </p>
+          <Link to="/dashboard" className={`mt-4 inline-block ${btnPrimaryClass}`}>
+            Go to dashboard
+          </Link>
+        </div>
+      ) : (
+        <div className={`mt-8 space-y-4 p-6 ${cardClass}`}>
+          <p className="text-sm text-sage-700">
+            Use your staff email and password on the sign-in page — the same
+            login works for the app and the staff admin area.
+          </p>
+          <Link
+            to="/login"
+            state={{ from: "/staff/users" }}
+            className={`block w-full text-center ${btnPrimaryClass}`}
+          >
+            Staff sign in
+          </Link>
+          <p className="text-center text-xs text-sage-500">
+            After signing in, open <strong>Staff admin</strong> in the menu or
+            the small dot in the footer.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

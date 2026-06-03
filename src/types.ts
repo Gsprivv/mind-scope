@@ -15,6 +15,7 @@ export interface User {
   status: AccountStatus;
   statusChangedAt: string | null;
   createdAt: string;
+  isStaff: boolean;
   /** @deprecated legacy field */
   name?: string;
 }

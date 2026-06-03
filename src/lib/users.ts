@@ -20,6 +20,7 @@ export function normalizeUser(raw: User): User {
     postcode: raw.postcode ?? "",
     status: raw.status ?? "active",
     statusChangedAt: raw.statusChangedAt ?? null,
+    isStaff: raw.isStaff ?? false,
   };
 }
 

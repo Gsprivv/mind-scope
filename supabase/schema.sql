@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   postcode TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'deactivated')),
   status_changed_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  is_staff BOOLEAN NOT NULL DEFAULT false
 );
 
 CREATE TABLE IF NOT EXISTS public.check_ins (
@@ -102,7 +103,8 @@ BEGIN
     date_of_birth,
     telephone,
     city,
-    postcode
+    postcode,
+    is_staff
   )
   VALUES (
     NEW.id,
@@ -111,7 +113,8 @@ BEGIN
     COALESCE((NEW.raw_user_meta_data->>'date_of_birth')::date, '2000-01-01'::date),
     COALESCE(NEW.raw_user_meta_data->>'telephone', ''),
     COALESCE(NEW.raw_user_meta_data->>'city', ''),
-    COALESCE(NEW.raw_user_meta_data->>'postcode', '')
+    COALESCE(NEW.raw_user_meta_data->>'postcode', ''),
+    COALESCE((NEW.raw_user_meta_data->>'is_staff')::boolean, false)
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
@@ -123,86 +126,8 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- Staff helpers (code checked server-side; change 101278 in all functions if needed)
-CREATE OR REPLACE FUNCTION public.staff_code_valid(p_code TEXT)
-RETURNS BOOLEAN
-LANGUAGE sql
-IMMUTABLE
-AS $$
-  SELECT TRIM(p_code) = '101278';
-$$;
-
-CREATE OR REPLACE FUNCTION public.staff_list_profiles(p_staff_code TEXT)
-RETURNS SETOF public.profiles
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF NOT public.staff_code_valid(p_staff_code) THEN
-    RAISE EXCEPTION 'Invalid staff code';
-  END IF;
-  RETURN QUERY SELECT * FROM public.profiles ORDER BY created_at DESC;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION public.staff_list_check_ins(p_staff_code TEXT)
-RETURNS SETOF public.check_ins
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF NOT public.staff_code_valid(p_staff_code) THEN
-    RAISE EXCEPTION 'Invalid staff code';
-  END IF;
-  RETURN QUERY SELECT * FROM public.check_ins ORDER BY completed_at DESC;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION public.staff_set_profile_status(
-  p_staff_code TEXT,
-  p_user_id UUID,
-  p_status TEXT
-)
-RETURNS public.profiles
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  updated public.profiles;
-BEGIN
-  IF NOT public.staff_code_valid(p_staff_code) THEN
-    RAISE EXCEPTION 'Invalid staff code';
-  END IF;
-  IF p_status NOT IN ('active', 'deactivated') THEN
-    RAISE EXCEPTION 'Invalid status';
-  END IF;
-  UPDATE public.profiles
-  SET status = p_status, status_changed_at = NOW()
-  WHERE id = p_user_id
-  RETURNING * INTO updated;
-  IF updated IS NULL THEN
-    RAISE EXCEPTION 'User not found';
-  END IF;
-  RETURN updated;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION public.staff_delete_user(p_staff_code TEXT, p_user_id UUID)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, auth
-AS $$
-BEGIN
-  IF NOT public.staff_code_valid(p_staff_code) THEN
-    RAISE EXCEPTION 'Invalid staff code';
-  END IF;
-  DELETE FROM auth.users WHERE id = p_user_id;
-END;
-$$;
+-- Staff access: run supabase/staff-migration.sql after this file for
+-- named staff accounts (is_staff column + session-based admin RPCs).
 
 CREATE OR REPLACE FUNCTION public.deactivate_own_account()
 RETURNS VOID
@@ -262,10 +187,6 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.staff_list_profiles(TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.staff_list_check_ins(TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.staff_set_profile_status(TEXT, UUID, TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.staff_delete_user(TEXT, UUID) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.deactivate_own_account() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.delete_own_account() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.verify_profile_phone(TEXT, TEXT) TO anon, authenticated;

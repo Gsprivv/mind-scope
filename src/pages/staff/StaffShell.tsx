@@ -1,6 +1,6 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { APP_NAME } from "../../constants/brand";
-import { useStaff } from "../../context/StaffContext";
+import { useAuth } from "../../context/AuthContext";
 
 const tabClass = ({ isActive }: { isActive: boolean }) =>
   `rounded-lg px-4 py-2 text-sm font-medium ${
@@ -12,20 +12,10 @@ const tabClass = ({ isActive }: { isActive: boolean }) =>
 export function StaffShell() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { lock } = useStaff();
+  const { user } = useAuth();
   const isAdmin =
     location.pathname.startsWith("/staff/users") ||
     location.pathname.startsWith("/staff/history");
-
-  const goHome = () => {
-    lock();
-    navigate("/");
-  };
-
-  const lockStaff = () => {
-    lock();
-    navigate("/staff");
-  };
 
   return (
     <div className="min-h-screen bg-sage-50">
@@ -33,21 +23,16 @@ export function StaffShell() {
         <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Link
-              to="/"
-              onClick={() => lock()}
+              to="/dashboard"
               className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-teal-800 hover:bg-teal-50"
             >
               <span aria-hidden>←</span>
-              Back to {APP_NAME} home
+              Back to app
             </Link>
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={lockStaff}
-                className="rounded-lg px-3 py-2 text-sm text-sage-600 hover:bg-sage-100"
-              >
-                Lock staff area
-              </button>
+            {isAdmin && user && (
+              <p className="text-sm text-sage-600">
+                Signed in as <strong>{user.fullName}</strong> (staff)
+              </p>
             )}
           </div>
 
@@ -66,14 +51,14 @@ export function StaffShell() {
                   All users
                 </NavLink>
                 <NavLink to="/staff/history" className={tabClass}>
-                  All check-ins
+                  All tests
                 </NavLink>
                 <button
                   type="button"
-                  onClick={goHome}
+                  onClick={() => navigate("/dashboard")}
                   className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700"
                 >
-                  Exit to public site
+                  Exit to app
                 </button>
               </nav>
             </div>
