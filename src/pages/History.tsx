@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { WELLNESS_TEST_ACTION } from "../constants/brand";
 import { RiskPieChart } from "../components/charts/RiskPieChart";
 import { ScoreLineChart } from "../components/charts/ScoreLineChart";
@@ -11,7 +12,7 @@ import {
 import { WellnessInsightsPanel } from "../components/insights/WellnessInsightsPanel";
 import { useAuth } from "../context/AuthContext";
 import { useSubscription } from "../hooks/useSubscription";
-import { useUserCheckIns } from "../hooks/useUserCheckIns";
+import { useCheckIns } from "../context/CheckInsContext";
 import { buildWellnessImprovementPlan } from "../lib/improvementPlans";
 import { computeRiskPercentages, getTrendMessage } from "../lib/historyStats";
 import { formatDateUK } from "../lib/formatDate";
@@ -25,7 +26,15 @@ import { btnPrimaryClass, btnSecondaryClass, cardClass } from "../lib/ui";
 export function History() {
   const { user } = useAuth();
   const { isPremium } = useSubscription();
-  const { checkIns } = useUserCheckIns(user?.id);
+  const { checkIns, reload } = useCheckIns();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.pathname === "/history") {
+      void reload();
+    }
+  }, [location.pathname, reload]);
+
   if (!user) return null;
   const riskData = computeRiskPercentages(checkIns);
   const trend = getTrendMessage(checkIns);

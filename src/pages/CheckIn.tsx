@@ -9,7 +9,7 @@ import { WELLNESS_TEST_COMPLETE, WELLNESS_TEST_LABEL } from "../constants/brand"
 import { CheckInDraftDialog } from "../components/CheckInDraftDialog";
 import { useAuth } from "../context/AuthContext";
 import { useSubscription } from "../hooks/useSubscription";
-import { useUserCheckIns } from "../hooks/useUserCheckIns";
+import { useCheckIns } from "../context/CheckInsContext";
 import {
   assessCrisisFromCheckIn,
   getCrisisGuidance,
@@ -46,7 +46,7 @@ export function CheckIn() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [draftPrompt, setDraftPrompt] = useState<DraftPrompt>(null);
   const [draftChecked, setDraftChecked] = useState(false);
-  const { checkIns, reload } = useUserCheckIns(user?.id);
+  const { checkIns, reload } = useCheckIns();
   const { isPremium } = useSubscription();
 
   const persistDraft = useCallback(() => {

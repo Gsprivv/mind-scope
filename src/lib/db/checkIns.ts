@@ -3,7 +3,17 @@ import { checkInFromRow, type CheckInRow } from "./mappers";
 import type { CheckIn } from "../../types";
 
 export async function fetchCheckInsForUser(userId: string): Promise<CheckIn[]> {
-  const { data, error } = await requireSupabase()
+  const client = requireSupabase();
+
+  const { data: rpcData, error: rpcError } = await client.rpc(
+    "fetch_my_check_ins"
+  );
+
+  if (!rpcError && rpcData) {
+    return ((rpcData as CheckInRow[]) ?? []).map(checkInFromRow);
+  }
+
+  const { data, error } = await client
     .from("check_ins")
     .select("*")
     .eq("user_id", userId)

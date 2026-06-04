@@ -39,8 +39,8 @@ export function useSubscription() {
     user?.isStaff,
   ]);
 
-  const isPremium =
-    serverPremium !== null ? serverPremium : isPremiumUser(user);
+  /** Profile + staff wins; server RPC can confirm but must not hide valid premium. */
+  const isPremium = isPremiumUser(user) || serverPremium === true;
 
   return {
     user,

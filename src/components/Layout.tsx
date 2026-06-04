@@ -6,6 +6,7 @@ import { ChatWidget } from "./ChatWidget";
 import { Footer } from "./Footer";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from "../context/AuthContext";
+import { useVisitStreak } from "../hooks/useVisitStreak";
 import { getDisplayName } from "../lib/users";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -18,6 +19,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 export function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  useVisitStreak(user?.id);
 
   const handleLogout = async () => {
     await logout();

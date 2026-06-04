@@ -1,6 +1,7 @@
 import type { User } from "../../types";
 import type { CheckIn } from "../../types";
 import { buildWellnessInsights } from "../../lib/analytics";
+import { getAppVisitStreak } from "../../lib/visitStreak";
 import { InsightParagraph, InsightSection } from "./InsightSection";
 
 export function WellnessInsightsPanel({
@@ -13,18 +14,20 @@ export function WellnessInsightsPanel({
   const insights = buildWellnessInsights(checkIns, user);
   if (!insights) return null;
 
+  const visitStreak = user ? getAppVisitStreak(user.id) : { current: 0, longest: 0 };
+
   return (
     <div className="mt-8 space-y-6">
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-teal-200 bg-teal-50/80 p-5 dark:border-teal-900 dark:bg-teal-950/40">
           <p className="text-xs font-semibold uppercase tracking-wide text-teal-800 dark:text-teal-300">
-            Current streak
+            App visit streak
           </p>
           <p className="mt-1 font-display text-3xl font-semibold text-teal-900 dark:text-teal-100">
-            {insights.streak.current} day{insights.streak.current === 1 ? "" : "s"}
+            {visitStreak.current} day{visitStreak.current === 1 ? "" : "s"}
           </p>
           <p className="mt-1 text-xs text-teal-700 dark:text-teal-400">
-            Longest: {insights.streak.longest} day{insights.streak.longest === 1 ? "" : "s"}
+            Longest: {visitStreak.longest} day{visitStreak.longest === 1 ? "" : "s"}
           </p>
         </div>
         <div className="rounded-2xl border border-sage-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800/90 sm:col-span-2">
