@@ -119,12 +119,10 @@ CREATE POLICY "check_ins_select_own"
     auth.uid() = user_id
     AND (
       public.is_profile_premium(auth.uid())
-      OR id = (
-        SELECT c.id
+      OR completed_at >= ALL (
+        SELECT c.completed_at
         FROM public.check_ins c
         WHERE c.user_id = auth.uid()
-        ORDER BY c.completed_at DESC
-        LIMIT 1
       )
     )
   );

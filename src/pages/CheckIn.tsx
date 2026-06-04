@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   CHECK_IN_QUESTIONS,
@@ -6,6 +6,7 @@ import {
   computeWellnessScore,
 } from "../data/questions";
 import { WELLNESS_TEST_COMPLETE, WELLNESS_TEST_LABEL } from "../constants/brand";
+import { CheckInDraftDialog } from "../components/CheckInDraftDialog";
 import { useAuth } from "../context/AuthContext";
 import { useSubscription } from "../hooks/useSubscription";
 import { useUserCheckIns } from "../hooks/useUserCheckIns";
@@ -13,6 +14,13 @@ import {
   assessCrisisFromCheckIn,
   getCrisisGuidance,
 } from "../lib/analytics";
+import {
+  clearCheckInDraft,
+  hasMeaningfulDraft,
+  loadCheckInDraft,
+  saveCheckInDraft,
+  type CheckInDraft,
+} from "../lib/checkInDraft";
 import { createCheckIn } from "../lib/db/checkIns";
 import { getRiskInfo, getRiskLevel } from "../lib/risk";
 import { getDisplayName } from "../lib/users";
@@ -22,6 +30,8 @@ import type { CheckIn as CheckInRecord, QuestionAnswer } from "../types";
 const SCALE = [1, 2, 3, 4, 5] as const;
 const SLEEP_HOURS_STEP = CHECK_IN_QUESTION_COUNT;
 const TOTAL_STEPS = CHECK_IN_QUESTION_COUNT + 1;
+
+type DraftPrompt = "resume" | "cancel" | null;
 
 export function CheckIn() {
   const { user } = useAuth();
@@ -34,8 +44,54 @@ export function CheckIn() {
   const [showHistoryPrompt, setShowHistoryPrompt] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [draftPrompt, setDraftPrompt] = useState<DraftPrompt>(null);
+  const [draftChecked, setDraftChecked] = useState(false);
   const { checkIns, reload } = useUserCheckIns(user?.id);
   const { isPremium } = useSubscription();
+
+  const persistDraft = useCallback(() => {
+    if (!user) return;
+    saveCheckInDraft({
+      userId: user.id,
+      step,
+      answers,
+      sleepHours,
+      note,
+      savedAt: new Date().toISOString(),
+    });
+  }, [user, step, answers, sleepHours, note]);
+
+  const applyDraft = useCallback((draft: CheckInDraft) => {
+    setStep(Math.min(Math.max(0, draft.step), SLEEP_HOURS_STEP));
+    setAnswers(draft.answers ?? {});
+    setSleepHours(draft.sleepHours ?? "7");
+    setNote(draft.note ?? "");
+  }, []);
+
+  const resetTest = useCallback(() => {
+    setStep(0);
+    setAnswers({});
+    setSleepHours("7");
+    setNote("");
+    setSaveError(null);
+    clearCheckInDraft();
+  }, []);
+
+  useEffect(() => {
+    if (!user || draftChecked) return;
+    const draft = loadCheckInDraft(user.id);
+    setDraftChecked(true);
+    if (hasMeaningfulDraft(draft)) {
+      setDraftPrompt("resume");
+    }
+  }, [user, draftChecked]);
+
+  useEffect(() => {
+    if (!user || submitted || draftPrompt === "resume") return;
+    if (Object.keys(answers).length > 0 || step > 0 || note.trim()) {
+      persistDraft();
+    }
+  }, [user, step, answers, sleepHours, note, submitted, draftPrompt, persistDraft]);
 
   if (!user) return null;
 
@@ -55,6 +111,16 @@ export function CheckIn() {
   };
 
   const goBack = () => setStep((s) => Math.max(0, s - 1));
+
+  const handleCancel = () => {
+    const draft = loadCheckInDraft(user.id);
+    if (hasMeaningfulDraft(draft) || Object.keys(answers).length > 0 || step > 0) {
+      persistDraft();
+      setDraftPrompt("cancel");
+      return;
+    }
+    navigate("/dashboard");
+  };
 
   const handleFinish = async (e: FormEvent) => {
     e.preventDefault();
@@ -85,13 +151,18 @@ export function CheckIn() {
     setSaveError(null);
     try {
       const saved = await createCheckIn(record);
+      clearCheckInDraft();
       reload();
       setSubmitted(saved);
       setShowHistoryPrompt(true);
     } catch (err) {
-      setSaveError(
-        err instanceof Error ? err.message : "Could not save check-in."
-      );
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null && "message" in err
+            ? String((err as { message: unknown }).message)
+            : "Could not save check-in.";
+      setSaveError(message);
     } finally {
       setSaving(false);
     }
@@ -156,9 +227,43 @@ export function CheckIn() {
 
   const progress = ((step + 1) / TOTAL_STEPS) * 100;
   const previousCount = checkIns.length;
+  const savedDraft = loadCheckInDraft(user.id);
 
   return (
     <div className="mx-auto max-w-xl">
+      {draftPrompt === "resume" && savedDraft && (
+        <CheckInDraftDialog
+          title="Continue your test?"
+          message="You have an unfinished wellness test saved on this device. Would you like to pick up where you left off or start fresh?"
+          onContinue={() => {
+            applyDraft(savedDraft);
+            setDraftPrompt(null);
+          }}
+          onStartOver={() => {
+            resetTest();
+            setDraftPrompt(null);
+          }}
+        />
+      )}
+
+      {draftPrompt === "cancel" && (
+        <CheckInDraftDialog
+          title="Leave the test?"
+          message="Your answers are saved on this device. Continue this test, start from the beginning, or leave and come back later."
+          onContinue={() => setDraftPrompt(null)}
+          onStartOver={() => {
+            resetTest();
+            setDraftPrompt(null);
+          }}
+          onDismiss={() => {
+            persistDraft();
+            setDraftPrompt(null);
+            navigate("/dashboard");
+          }}
+          dismissLabel="Leave for now (save progress)"
+        />
+      )}
+
       <h1 className="font-display text-2xl font-semibold text-sage-900 dark:text-slate-100">
         {WELLNESS_TEST_LABEL}
       </h1>
@@ -184,7 +289,7 @@ export function CheckIn() {
         </div>
       </div>
 
-      {previousCount === 0 && step === 0 && (
+      {previousCount === 0 && step === 0 && !hasMeaningfulDraft(savedDraft) && (
         <p className="mb-4 rounded-xl bg-teal-50 px-4 py-3 text-sm text-teal-900 dark:bg-teal-950/50 dark:text-teal-200">
           {CHECK_IN_QUESTION_COUNT} wellbeing dimensions plus sleep hours — then
           your score and Mind Scope insights.
@@ -288,7 +393,7 @@ export function CheckIn() {
 
       <button
         type="button"
-        onClick={() => navigate("/dashboard")}
+        onClick={handleCancel}
         className="mt-4 w-full text-center text-sm text-sage-500 hover:text-sage-700 dark:text-slate-500"
       >
         Cancel

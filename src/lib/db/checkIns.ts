@@ -27,14 +27,32 @@ export async function createCheckIn(
     completed_at: record.completedAt,
   };
 
-  const { data, error } = await requireSupabase()
+  const client = requireSupabase();
+  const { data, error } = await client
     .from("check_ins")
     .insert(row)
     .select("*")
     .single();
 
-  if (error) throw error;
-  return checkInFromRow(data as CheckInRow);
+  if (!error && data) {
+    return checkInFromRow(data as CheckInRow);
+  }
+
+  if (error) {
+    const { error: insertOnlyError } = await client.from("check_ins").insert(row);
+    if (insertOnlyError) throw insertOnlyError;
+  }
+
+  return {
+    id: row.id,
+    userId: record.userId,
+    answers: record.answers,
+    note: record.note,
+    score: Number(record.score),
+    riskLevel: record.riskLevel,
+    sleepHours: record.sleepHours,
+    completedAt: record.completedAt,
+  };
 }
 
 export async function staffFetchAllCheckIns(): Promise<CheckIn[]> {
