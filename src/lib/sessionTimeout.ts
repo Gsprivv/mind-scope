@@ -1,5 +1,5 @@
 /** Sign out after this long away from the app or inactive (ms). */
-export const SESSION_TIMEOUT_MS = 8 * 60 * 1000;
+export const SESSION_TIMEOUT_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const SESSION_LAST_ACTIVE_KEY = "mind_scope_last_active_at";
 

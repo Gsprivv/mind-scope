@@ -21,8 +21,7 @@ import { StaffShell } from "./pages/staff/StaffShell";
 import { StaffUsers } from "./pages/staff/StaffUsers";
 
 function GuestOnly({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  if (loading) return null;
+  const { user } = useAuth();
   if (user) return <Navigate to="/dashboard" replace />;
   return children;
 }

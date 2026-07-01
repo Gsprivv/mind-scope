@@ -118,13 +118,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const client = requireSupabase();
     let active = true;
 
-    loadUserFromSession()
-      .then((profile) => {
-        if (active) setUser(profile);
-      })
-      .finally(() => {
+    void (async () => {
+      try {
+        const {
+          data: { session },
+        } = await client.auth.getSession();
+
+        if (!active) return;
+
+        if (!session?.user) {
+          setUser(null);
+          return;
+        }
+
+        if (isSessionExpired(readLastActiveAt())) {
+          clearLastActiveAt();
+          await client.auth.signOut();
+          setUser(null);
+          return;
+        }
+
+        const profile = await fetchProfileById(session.user.id);
+        if (!active) return;
+
+        if (!profile || !isAccountActive(profile)) {
+          await client.auth.signOut();
+          setUser(null);
+          return;
+        }
+
+        writeLastActiveAt();
+        setUser(profile);
+      } catch {
+        if (active) setUser(null);
+      } finally {
         if (active) setLoading(false);
-      });
+      }
+    })();
 
     const {
       data: { subscription },

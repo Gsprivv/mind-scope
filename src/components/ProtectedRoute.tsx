@@ -1,4 +1,5 @@
 import { Navigate, useLocation } from "react-router-dom";
+import { AuthLoadingFallback } from "./AuthLoadingFallback";
 import { useAuth } from "../context/AuthContext";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -6,11 +7,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const location = useLocation();
 
   if (loading) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="text-sage-500">Loading…</p>
-      </div>
-    );
+    return <AuthLoadingFallback />;
   }
 
   if (!user) {

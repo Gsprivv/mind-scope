@@ -14,11 +14,11 @@ const ACTIVITY_EVENTS = [
   "click",
 ] as const;
 
-const CHECK_INTERVAL_MS = 30_000;
+const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 const ACTIVITY_THROTTLE_MS = 15_000;
 
 /**
- * Logs the user out after 8 minutes away from the app or without activity.
+ * Logs the user out after a week away from the app or without activity.
  * Persists last-active time so closing/reopening the PWA still enforces the limit.
  */
 export function useSessionTimeout(
