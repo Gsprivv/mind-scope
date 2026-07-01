@@ -4,6 +4,26 @@ interface Props {
   checkIns: CheckIn[];
 }
 
+function dayKey(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function formatDayLabel(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function ScoreLineChart({ checkIns }: Props) {
   const sorted = [...checkIns].sort(
     (a, b) =>
@@ -11,10 +31,6 @@ export function ScoreLineChart({ checkIns }: Props) {
   );
 
   const width = 400;
-  const height = 200;
-  const pad = { top: 16, right: 16, bottom: 36, left: 36 };
-  const innerW = width - pad.left - pad.right;
-  const innerH = height - pad.top - pad.bottom;
 
   if (sorted.length === 0) {
     return (
@@ -24,13 +40,56 @@ export function ScoreLineChart({ checkIns }: Props) {
     );
   }
 
-  const points = sorted.map((c, i) => {
+  const dayGroups = sorted.reduce<{ key: string; date: string; items: CheckIn[] }[]>(
+    (groups, checkIn) => {
+      const key = dayKey(checkIn.completedAt);
+      const last = groups[groups.length - 1];
+      if (last?.key === key) {
+        last.items.push(checkIn);
+      } else {
+        groups.push({ key, date: checkIn.completedAt, items: [checkIn] });
+      }
+      return groups;
+    },
+    []
+  );
+
+  const dayCount = dayGroups.length;
+  const maxTestsPerDay = Math.max(...dayGroups.map((g) => g.items.length), 1);
+  const extraBottom = maxTestsPerDay > 1 ? (maxTestsPerDay - 1) * 10 + 12 : 0;
+  const height = 200 + extraBottom;
+  const pad = { top: 16, right: 16, bottom: 36 + extraBottom, left: 36 };
+  const innerW = width - pad.left - pad.right;
+  const innerH = height - pad.top - pad.bottom;
+
+  const dayX = new Map<string, number>();
+  dayGroups.forEach((group, i) => {
     const x =
-      sorted.length === 1
+      dayCount === 1
         ? pad.left + innerW / 2
-        : pad.left + (i / (sorted.length - 1)) * innerW;
-    const y = pad.top + innerH - (c.score / 100) * innerH;
-    return { x, y, score: c.score, date: c.completedAt };
+        : pad.left + (i / (dayCount - 1)) * innerW;
+    dayX.set(group.key, x);
+  });
+
+  const points = sorted.map((checkIn) => {
+    const group = dayGroups.find((g) =>
+      g.items.some((item) => item.id === checkIn.id)
+    )!;
+    const groupIndex = group.items.findIndex((item) => item.id === checkIn.id);
+    const baseX = dayX.get(group.key)!;
+    const spread =
+      group.items.length <= 1
+        ? 0
+        : (groupIndex - (group.items.length - 1) / 2) * 6;
+    const x = baseX + spread;
+    const y = pad.top + innerH - (checkIn.score / 100) * innerH;
+    return {
+      x,
+      y,
+      score: checkIn.score,
+      date: checkIn.completedAt,
+      dayKey: group.key,
+    };
   });
 
   const linePath = points
@@ -83,25 +142,39 @@ export function ScoreLineChart({ checkIns }: Props) {
           <g key={i}>
             <circle cx={p.x} cy={p.y} r="5" fill="#5a755a" stroke="#faf8f5" strokeWidth="2" />
             <title>
-              {new Date(p.date).toLocaleDateString("en-GB")}: {p.score}%
+              {formatDayLabel(p.date)} {formatTime(p.date)}: {p.score}%
             </title>
           </g>
         ))}
-        {points.length <= 6 &&
-          points.map((p, i) => (
-            <text
-              key={`label-${i}`}
-              x={p.x}
-              y={height - 8}
-              textAnchor="middle"
-              className="fill-sage-500 text-[9px]"
-            >
-              {new Date(p.date).toLocaleDateString("en-GB", {
-                month: "short",
-                day: "numeric",
-              })}
-            </text>
-          ))}
+        {dayGroups.map((group) => {
+          const x = dayX.get(group.key)!;
+          const showScores = group.items.length > 1;
+          const labelY = height - pad.bottom + 14;
+          return (
+            <g key={group.key}>
+              <text
+                x={x}
+                y={labelY}
+                textAnchor="middle"
+                className="fill-sage-500 text-[9px]"
+              >
+                {formatDayLabel(group.date)}
+              </text>
+              {showScores &&
+                group.items.map((item, i) => (
+                  <text
+                    key={item.id}
+                    x={x}
+                    y={labelY + 12 + i * 10}
+                    textAnchor="middle"
+                    className="fill-sage-600 text-[8px] font-medium"
+                  >
+                    {item.score}%
+                  </text>
+                ))}
+            </g>
+          );
+        })}
       </svg>
       <p className="mt-2 text-center text-xs text-sage-500">
         Higher line = better wellness score over time

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   CHECK_IN_QUESTIONS,
@@ -38,7 +38,8 @@ export function CheckIn() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [sleepHours, setSleepHours] = useState<string>("7");
+  const [sleepHours, setSleepHours] = useState<string>("");
+  const [sleepHoursTouched, setSleepHoursTouched] = useState(false);
   const [note, setNote] = useState("");
   const [submitted, setSubmitted] = useState<CheckInRecord | null>(null);
   const [showHistoryPrompt, setShowHistoryPrompt] = useState(false);
@@ -64,14 +65,16 @@ export function CheckIn() {
   const applyDraft = useCallback((draft: CheckInDraft) => {
     setStep(Math.min(Math.max(0, draft.step), SLEEP_HOURS_STEP));
     setAnswers(draft.answers ?? {});
-    setSleepHours(draft.sleepHours ?? "7");
+    setSleepHours(draft.sleepHours ?? "");
+    setSleepHoursTouched(Boolean(draft.sleepHours?.trim()));
     setNote(draft.note ?? "");
   }, []);
 
   const resetTest = useCallback(() => {
     setStep(0);
     setAnswers({});
-    setSleepHours("7");
+    setSleepHours("");
+    setSleepHoursTouched(false);
     setNote("");
     setSaveError(null);
     clearCheckInDraft();
@@ -122,12 +125,17 @@ export function CheckIn() {
     navigate("/dashboard");
   };
 
-  const handleFinish = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!allAnswered || saving) return;
+  const parsedSleepHours = parseFloat(sleepHours);
+  const sleepHoursValid =
+    sleepHours.trim() !== "" &&
+    !Number.isNaN(parsedSleepHours) &&
+    parsedSleepHours >= 0 &&
+    parsedSleepHours <= 24;
 
-    const hours = parseFloat(sleepHours);
-    if (Number.isNaN(hours) || hours < 0 || hours > 24) return;
+  const handleFinish = async () => {
+    if (!allAnswered || !sleepHoursValid || saving) return;
+
+    const hours = parsedSleepHours;
 
     const answerList: QuestionAnswer[] = CHECK_IN_QUESTIONS.map((q) => ({
       questionId: q.id,
@@ -296,7 +304,12 @@ export function CheckIn() {
         </p>
       )}
 
-      <form onSubmit={isLast ? handleFinish : (e) => e.preventDefault()}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (isLast && sleepHoursValid && !saving) handleFinish();
+        }}
+      >
         {isSleepStep ? (
           <fieldset>
             <legend className="font-display text-2xl font-semibold leading-snug text-sage-900 dark:text-slate-100">
@@ -311,10 +324,20 @@ export function CheckIn() {
               max={24}
               step={0.5}
               required
+              autoFocus
+              placeholder="e.g. 7"
               value={sleepHours}
-              onChange={(e) => setSleepHours(e.target.value)}
+              onChange={(e) => {
+                setSleepHours(e.target.value);
+                setSleepHoursTouched(true);
+              }}
               className={`${inputClass} mt-4 max-w-[140px] text-center text-2xl font-semibold`}
             />
+            {!sleepHoursTouched && (
+              <p className="mt-2 text-sm text-sage-500 dark:text-slate-400">
+                Enter your sleep hours to continue.
+              </p>
+            )}
             <span className="ml-2 text-sage-600 dark:text-slate-400">hours</span>
 
             <label className="mt-8 block">
@@ -359,7 +382,7 @@ export function CheckIn() {
           </fieldset>
         )}
 
-        <div className="mt-8 flex gap-3">
+        <div className="mt-8 flex gap-3" key={step}>
           {step > 0 && (
             <button type="button" onClick={goBack} className={btnSecondaryClass}>
               Back
@@ -376,8 +399,9 @@ export function CheckIn() {
             </button>
           ) : (
             <button
-              type="submit"
-              disabled={!allAnswered || saving}
+              type="button"
+              onClick={handleFinish}
+              disabled={!allAnswered || !sleepHoursValid || saving}
               className={`flex-1 ${btnPrimaryClass} disabled:opacity-50`}
             >
               {saving ? "Saving…" : "Finish test & get my score"}

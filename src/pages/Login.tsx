@@ -18,6 +18,7 @@ export function Login() {
   const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [showReset, setShowReset] = useState(false);
   const [resetPhone, setResetPhone] = useState("");
@@ -125,15 +126,26 @@ export function Login() {
 
             <label className="block">
               <span className="text-sm font-medium text-sage-700 dark:text-slate-300">Password</span>
-              <input
-                type="password"
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={inputClass}
-                disabled={locked}
-              />
+              <div className="relative mt-1">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`${inputClass} pr-11`}
+                  disabled={locked}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-sm font-medium text-sage-600 hover:text-sage-800 dark:text-slate-400 dark:hover:text-slate-200"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  disabled={locked}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
             </label>
 
             <button type="submit" disabled={submitting || locked} className={`w-full ${btnPrimaryClass}`}>
