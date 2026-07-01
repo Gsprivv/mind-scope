@@ -85,7 +85,7 @@ export function Footer() {
           professional medical or mental health care. Registered in England and
           Wales.
         </p>
-        <div className="mt-4 flex flex-col items-center gap-4">
+        <div className="relative z-10 mt-4 flex flex-col items-center gap-4 pb-2">
           <ChatOpenButton variant="footer" />
           <StaffAccessButton />
         </div>

@@ -20,6 +20,8 @@ import { isStaffEmail } from "../constants/staffAccounts";
 import { calculateAge } from "../lib/age";
 import {
   clearAttempts,
+  formatLockoutRemaining,
+  getLockoutRemainingMs,
   incrementAttempts,
   isLocked,
   MAX_LOGIN_ATTEMPTS,
@@ -266,9 +268,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const trimmedEmail = email.trim().toLowerCase();
 
       if (isLocked(trimmedEmail)) {
+        const remaining = getLockoutRemainingMs(trimmedEmail);
         return {
           success: false,
-          error: "Too many failed attempts. Please reset your password below.",
+          error: `Too many failed attempts. Try again in ${formatLockoutRemaining(remaining)}.`,
           locked: true,
           attemptsLeft: 0,
         };
@@ -290,7 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (left <= 0) {
             return {
               success: false,
-              error: "Too many failed attempts. Please reset your password below.",
+              error: `Too many failed attempts. Try again in ${formatLockoutRemaining(getLockoutRemainingMs(trimmedEmail))}.`,
               locked: true,
               attemptsLeft: 0,
             };

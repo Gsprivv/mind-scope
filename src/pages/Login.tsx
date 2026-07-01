@@ -2,8 +2,13 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { IMAGES } from "../constants/brand";
 import { useAuth } from "../context/AuthContext";
-import { isLocked, MAX_LOGIN_ATTEMPTS } from "../lib/loginAttempts";
-import { btnPrimaryClass, cardClass, inputClass } from "../lib/ui";
+import {
+  formatLockoutRemaining,
+  getLockoutRemainingMs,
+  isLocked,
+  MAX_LOGIN_ATTEMPTS,
+} from "../lib/loginAttempts";
+import { btnPrimaryClass, btnSecondaryClass, cardClass, inputClass } from "../lib/ui";
 
 export function Login() {
   const { login, resetPassword } = useAuth();
@@ -17,6 +22,7 @@ export function Login() {
   const [error, setError] = useState<string | null>(null);
   const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
+  const [lockoutRemainingMs, setLockoutRemainingMs] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -27,14 +33,28 @@ export function Login() {
   const [resetSuccess, setResetSuccess] = useState(false);
 
   useEffect(() => {
-    if (email.trim()) {
-      setLocked(isLocked(email));
-      if (isLocked(email)) setShowReset(true);
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setLocked(false);
+      setLockoutRemainingMs(0);
+      return;
     }
+
+    const syncLockState = () => {
+      const remaining = getLockoutRemainingMs(trimmed);
+      setLockoutRemainingMs(remaining);
+      setLocked(remaining > 0);
+    };
+
+    syncLockState();
+    const interval = window.setInterval(syncLockState, 1000);
+    return () => window.clearInterval(interval);
   }, [email]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (isLocked(email)) return;
+
     setError(null);
     setSubmitting(true);
     try {
@@ -47,7 +67,7 @@ export function Login() {
       setError(result.error);
       setAttemptsLeft(result.attemptsLeft ?? null);
       setLocked(result.locked ?? false);
-      if (result.locked) setShowReset(true);
+      setLockoutRemainingMs(getLockoutRemainingMs(email));
     } finally {
       setSubmitting(false);
     }
@@ -63,21 +83,34 @@ export function Login() {
     }
 
     setSubmitting(true);
-    const err = await resetPassword(email, resetPhone, newPassword);
-    setSubmitting(false);
+    try {
+      const err = await resetPassword(email, resetPhone, newPassword);
+      if (err) {
+        setError(err);
+        return;
+      }
 
-    if (err) {
-      setError(err);
-      return;
+      setResetSuccess(true);
+      setLocked(false);
+      setLockoutRemainingMs(0);
+      setShowReset(false);
+      setPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setResetPhone("");
+    } finally {
+      setSubmitting(false);
     }
+  };
 
-    setResetSuccess(true);
-    setLocked(false);
+  const openResetForm = () => {
+    setError(null);
+    setShowReset(true);
+  };
+
+  const backToSignIn = () => {
     setShowReset(false);
-    setPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setResetPhone("");
+    setError(null);
   };
 
   return (
@@ -111,7 +144,14 @@ export function Login() {
                 {error}
               </p>
             )}
-            {attemptsLeft !== null && attemptsLeft > 0 && !error && (
+            {locked && lockoutRemainingMs > 0 && (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                Too many failed attempts. Try signing in again in{" "}
+                <strong>{formatLockoutRemaining(lockoutRemainingMs)}</strong>.
+                You can also reset your password below if you have forgotten it.
+              </p>
+            )}
+            {attemptsLeft !== null && attemptsLeft > 0 && !error && !locked && (
               <p className="text-sm text-amber-700 dark:text-amber-300">
                 {attemptsLeft} of {MAX_LOGIN_ATTEMPTS} login attempts remaining.
               </p>
@@ -157,19 +197,17 @@ export function Login() {
               </div>
             </label>
 
-            <button type="submit" disabled={submitting || locked} className={`w-full ${btnPrimaryClass}`}>
-              {submitting ? "Signing in…" : "Sign in"}
+            <button type="submit" disabled={submitting || locked} className={`w-full ${btnPrimaryClass} disabled:opacity-50`}>
+              {submitting ? "Signing in…" : locked ? "Try again soon" : "Sign in"}
             </button>
 
-            {locked && (
-              <button
-                type="button"
-                onClick={() => setShowReset(true)}
-                className="w-full text-sm font-medium text-teal-700 underline dark:text-teal-400"
-              >
-                Reset your password
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={openResetForm}
+              className="w-full text-sm font-medium text-teal-700 underline dark:text-teal-400"
+            >
+              Forgot your password?
+            </button>
           </form>
         ) : (
           <form onSubmit={handleReset} className={`mt-8 space-y-4 p-6 ${cardClass}`}>
@@ -242,18 +280,13 @@ export function Login() {
               {submitting ? "Updating…" : "Update password"}
             </button>
 
-            {!locked && (
-              <button
-                type="button"
-                onClick={() => {
-                  setShowReset(false);
-                  setError(null);
-                }}
-                className="w-full text-sm text-sage-600 dark:text-slate-400"
-              >
-                Back to sign in
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={backToSignIn}
+              className={`w-full ${btnSecondaryClass}`}
+            >
+              Back to sign in
+            </button>
           </form>
         )}
 
