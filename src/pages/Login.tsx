@@ -37,18 +37,20 @@ export function Login() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    const result = await login(email, password);
-    setSubmitting(false);
+    try {
+      const result = await login(email, password);
+      if (result.success) {
+        navigate(from, { replace: true });
+        return;
+      }
 
-    if (result.success) {
-      navigate(from, { replace: true });
-      return;
+      setError(result.error);
+      setAttemptsLeft(result.attemptsLeft ?? null);
+      setLocked(result.locked ?? false);
+      if (result.locked) setShowReset(true);
+    } finally {
+      setSubmitting(false);
     }
-
-    setError(result.error);
-    setAttemptsLeft(result.attemptsLeft ?? null);
-    setLocked(result.locked ?? false);
-    if (result.locked) setShowReset(true);
   };
 
   const handleReset = async (e: FormEvent) => {
@@ -99,6 +101,9 @@ export function Login() {
         {!showReset ? (
           <form
             onSubmit={handleSubmit}
+            method="post"
+            action="/login"
+            autoComplete="on"
             className={`mt-8 space-y-5 p-6 ${cardClass}`}
           >
             {error && (
@@ -112,22 +117,26 @@ export function Login() {
               </p>
             )}
 
-            <label className="block">
+            <label className="block" htmlFor="login-email">
               <span className="text-sm font-medium text-sage-700 dark:text-slate-300">Email</span>
               <input
+                id="login-email"
+                name="email"
                 type="email"
                 required
-                autoComplete="email"
+                autoComplete="username email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className={inputClass}
               />
             </label>
 
-            <label className="block">
+            <label className="block" htmlFor="login-password">
               <span className="text-sm font-medium text-sage-700 dark:text-slate-300">Password</span>
               <div className="relative mt-1">
                 <input
+                  id="login-password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   required
                   autoComplete="current-password"

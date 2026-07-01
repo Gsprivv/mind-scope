@@ -28,6 +28,7 @@ import { isAccountActive, normalizeUser } from "../lib/users";
 import { clearLastActiveAt, isSessionExpired, readLastActiveAt, writeLastActiveAt } from "../lib/sessionTimeout";
 import { useSessionTimeout } from "../hooks/useSessionTimeout";
 import { isSupabaseConfigured, requireSupabase } from "../lib/supabase";
+import { TimeoutError, withTimeout } from "../lib/withTimeout";
 import type { Session } from "@supabase/supabase-js";
 import type { AuthChangeEvent } from "@supabase/supabase-js";
 
@@ -70,24 +71,27 @@ function SessionTimeoutGuard({
   return null;
 }
 
-async function loadUserFromSession(): Promise<User | null> {
-  const client = requireSupabase();
-  const {
-    data: { session },
-  } = await client.auth.getSession();
-  if (!session?.user) return null;
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 12_000;
+const AUTH_REQUEST_TIMEOUT_MS = 15_000;
 
+async function resolveUserFromSession(session: Session): Promise<User | null> {
   if (isSessionExpired(readLastActiveAt())) {
     clearLastActiveAt();
-    await client.auth.signOut();
+    await requireSupabase().auth.signOut();
     return null;
   }
 
-  const profile = await fetchProfileById(session.user.id);
+  const profile = await withTimeout(
+    fetchProfileById(session.user.id),
+    AUTH_REQUEST_TIMEOUT_MS,
+    "Could not load your profile in time."
+  );
+
   if (!profile || !isAccountActive(profile)) {
-    await client.auth.signOut();
+    await requireSupabase().auth.signOut();
     return null;
   }
+
   writeLastActiveAt();
   return profile;
 }
@@ -102,7 +106,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const profile = await loadUserFromSession();
+      const client = requireSupabase();
+      const {
+        data: { session },
+      } = await withTimeout(
+        client.auth.getSession(),
+        AUTH_BOOTSTRAP_TIMEOUT_MS
+      );
+      if (!session?.user) {
+        setUser(null);
+        return;
+      }
+      const profile = await resolveUserFromSession(session);
       setUser(profile);
     } catch {
       setUser(null);
@@ -122,7 +137,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const {
           data: { session },
-        } = await client.auth.getSession();
+        } = await withTimeout(
+          client.auth.getSession(),
+          AUTH_BOOTSTRAP_TIMEOUT_MS,
+          "Session check timed out."
+        );
 
         if (!active) return;
 
@@ -131,23 +150,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        if (isSessionExpired(readLastActiveAt())) {
-          clearLastActiveAt();
-          await client.auth.signOut();
-          setUser(null);
-          return;
-        }
-
-        const profile = await fetchProfileById(session.user.id);
+        const profile = await resolveUserFromSession(session);
         if (!active) return;
-
-        if (!profile || !isAccountActive(profile)) {
-          await client.auth.signOut();
-          setUser(null);
-          return;
-        }
-
-        writeLastActiveAt();
         setUser(profile);
       } catch {
         if (active) setUser(null);
@@ -158,30 +162,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = client.auth.onAuthStateChange(async (_event: AuthChangeEvent, session: Session | null) => {
-      if (!active) return;
-      if (!session?.user) {
-        setUser(null);
-        return;
-      }
-      if (isSessionExpired(readLastActiveAt())) {
-        clearLastActiveAt();
-        await client.auth.signOut();
-        setUser(null);
-        return;
-      }
-      try {
-        const profile = await fetchProfileById(session.user.id);
-        if (!profile || !isAccountActive(profile)) {
-          await client.auth.signOut();
-          setUser(null);
-          return;
-        }
-        setUser(profile);
-        writeLastActiveAt();
-      } catch {
-        setUser(null);
-      }
+    } = client.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+      if (!active || event === "INITIAL_SESSION") return;
+
+      // Defer async Supabase calls to avoid deadlocking getSession().
+      window.setTimeout(() => {
+        void (async () => {
+          if (!active) return;
+          if (!session?.user) {
+            setUser(null);
+            return;
+          }
+          try {
+            const profile = await resolveUserFromSession(session);
+            if (active) setUser(profile);
+          } catch {
+            if (active) setUser(null);
+          }
+        })();
+      }, 0);
     });
 
     return () => {
@@ -275,54 +274,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
-      const accountStatus = await getAccountStatus(trimmedEmail);
-      if (!accountStatus) {
-        return {
-          success: false,
-          error: "No account found with this email address.",
-        };
-      }
+      try {
+        const client = requireSupabase();
+        const { data, error } = await withTimeout(
+          client.auth.signInWithPassword({
+            email: trimmedEmail,
+            password,
+          }),
+          AUTH_REQUEST_TIMEOUT_MS
+        );
 
-      if (accountStatus === "deactivated") {
-        return {
-          success: false,
-          error:
-            "This account has been deactivated. Contact support if you need it reactivated.",
-        };
-      }
+        if (error) {
+          const attempts = incrementAttempts(trimmedEmail);
+          const left = MAX_LOGIN_ATTEMPTS - attempts;
+          if (left <= 0) {
+            return {
+              success: false,
+              error: "Too many failed attempts. Please reset your password below.",
+              locked: true,
+              attemptsLeft: 0,
+            };
+          }
 
-      const client = requireSupabase();
-      const { data, error } = await client.auth.signInWithPassword({
-        email: trimmedEmail,
-        password,
-      });
+          const message =
+            error.message.toLowerCase().includes("invalid login credentials")
+              ? `Incorrect email or password. ${left} attempt${left === 1 ? "" : "s"} remaining.`
+              : error.message;
 
-      if (error) {
-        const attempts = incrementAttempts(trimmedEmail);
-        const left = MAX_LOGIN_ATTEMPTS - attempts;
-        if (left <= 0) {
           return {
             success: false,
-            error: "Too many failed attempts. Please reset your password below.",
-            locked: true,
-            attemptsLeft: 0,
+            error: message,
+            attemptsLeft: left,
           };
         }
-        return {
-          success: false,
-          error: `Incorrect password. ${left} attempt${left === 1 ? "" : "s"} remaining.`,
-          attemptsLeft: left,
-        };
-      }
 
-      clearAttempts(trimmedEmail);
-      const profile = await fetchProfileById(data.user.id);
-      if (!profile) {
-        return { success: false, error: "Could not load your profile." };
+        clearAttempts(trimmedEmail);
+        const profile = await withTimeout(
+          fetchProfileById(data.user.id),
+          AUTH_REQUEST_TIMEOUT_MS
+        );
+
+        if (!profile) {
+          await client.auth.signOut();
+          return { success: false, error: "Could not load your profile." };
+        }
+
+        if (!isAccountActive(profile)) {
+          await client.auth.signOut();
+          return {
+            success: false,
+            error:
+              "This account has been deactivated. Contact support if you need it reactivated.",
+          };
+        }
+
+        setUser(normalizeUser(profile));
+        writeLastActiveAt();
+        return { success: true };
+      } catch (err) {
+        const message =
+          err instanceof TimeoutError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : "Sign in failed. Please try again.";
+        return { success: false, error: message };
       }
-      setUser(normalizeUser(profile));
-      writeLastActiveAt();
-      return { success: true };
     },
     []
   );

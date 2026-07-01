@@ -28,21 +28,24 @@ export function Signup() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    const err = await signUp({
-      fullName,
-      email,
-      password,
-      dateOfBirth,
-      telephone,
-      city,
-      postcode,
-    });
-    setSubmitting(false);
-    if (err) {
-      setError(err);
-      return;
+    try {
+      const err = await signUp({
+        fullName,
+        email,
+        password,
+        dateOfBirth,
+        telephone,
+        city,
+        postcode,
+      });
+      if (err) {
+        setError(err);
+        return;
+      }
+      navigate("/dashboard", { replace: true });
+    } finally {
+      setSubmitting(false);
     }
-    navigate("/dashboard", { replace: true });
   };
 
   return (
@@ -56,6 +59,9 @@ export function Signup() {
 
       <form
         onSubmit={handleSubmit}
+        method="post"
+        action="/signup"
+        autoComplete="on"
         className={`mt-8 space-y-4 p-6 ${cardClass}`}
       >
         {error && (
@@ -79,9 +85,11 @@ export function Signup() {
           />
         </label>
 
-        <label className="block">
+        <label className="block" htmlFor="signup-email">
           <span className="text-sm font-medium text-sage-700">Email</span>
           <input
+            id="signup-email"
+            name="email"
             type="email"
             required
             autoComplete="email"
@@ -91,10 +99,12 @@ export function Signup() {
           />
         </label>
 
-        <label className="block">
+        <label className="block" htmlFor="signup-password">
           <span className="text-sm font-medium text-sage-700 dark:text-slate-300">Password</span>
           <div className="relative mt-1">
             <input
+              id="signup-password"
+              name="password"
               type={showPassword ? "text" : "password"}
               required
               minLength={6}

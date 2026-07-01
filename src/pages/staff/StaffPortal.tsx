@@ -5,20 +5,14 @@ import { useAuth } from "../../context/AuthContext";
 import { btnPrimaryClass, cardClass } from "../../lib/ui";
 
 export function StaffPortal() {
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && user?.isStaff) {
+    if (user?.isStaff) {
       navigate("/staff/users", { replace: true });
     }
-  }, [user, loading, navigate]);
-
-  if (loading) {
-    return (
-      <p className="py-16 text-center text-sage-600">Checking access…</p>
-    );
-  }
+  }, [user, navigate]);
 
   if (user?.isStaff) return null;
 

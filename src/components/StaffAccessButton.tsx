@@ -10,7 +10,11 @@ export function StaffAccessButton() {
       navigate("/staff/users");
       return;
     }
-    navigate("/staff");
+    if (user) {
+      navigate("/staff");
+      return;
+    }
+    navigate("/login", { state: { from: "/staff/users" } });
   };
 
   return (
