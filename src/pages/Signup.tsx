@@ -17,6 +17,7 @@ export function Signup() {
   const [postcode, setPostcode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const age = useMemo(
     () => (dateOfBirth ? calculateAge(dateOfBirth) : null),
@@ -91,17 +92,27 @@ export function Signup() {
         </label>
 
         <label className="block">
-          <span className="text-sm font-medium text-sage-700">Password</span>
-          <input
-            type="password"
-            required
-            minLength={6}
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={inputClass}
-          />
-          <span className="mt-1 block text-xs text-sage-500">
+          <span className="text-sm font-medium text-sage-700 dark:text-slate-300">Password</span>
+          <div className="relative mt-1">
+            <input
+              type={showPassword ? "text" : "password"}
+              required
+              minLength={6}
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={`${inputClass} pr-11`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute inset-y-0 right-0 flex items-center px-3 text-sm font-medium text-sage-600 hover:text-sage-800 dark:text-slate-400 dark:hover:text-slate-200"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+          <span className="mt-1 block text-xs text-sage-500 dark:text-slate-400">
             At least 6 characters
           </span>
         </label>
